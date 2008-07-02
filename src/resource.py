@@ -115,7 +115,7 @@ class ResourceType(object):
     return self.__name
 
   def newinstance(self, valdict, graph):
-    return self.__cls(valdict=valdict, graph=graph)
+    return self.__cls(type=self, valdict=valdict, graph=graph)
 
   def with_defaults(self, valdict):
     r = dict(valdict)

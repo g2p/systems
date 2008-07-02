@@ -27,16 +27,6 @@ class AptitudePackage(resource.Resource):
     ])
     Registry.get_singleton().register_resource_type(cls.__restype)
 
-  def __init__(self, valdict, graph):
-    """
-    Constructor.
-
-    graph is the container resource graph.
-    """
-
-    resource.Resource.__init__(self,
-        type=self.__restype, valdict=valdict, graph=graph)
-
   @classmethod
   def is_valid_pkgname(cls, name):
     # Specified here:
