@@ -88,6 +88,7 @@ class AptitudePackage(resource.Resource):
       ['/usr/bin/aptitude', 'install', self.to_aptitude_string()],
       env={'DEBIAN_FRONTEND': 'noninteractive'})
 
-AptitudePackage.register()
+def register():
+  AptitudePackage.register()
 
 # vim: set sw=2 ts=2 et :

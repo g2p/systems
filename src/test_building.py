@@ -1,6 +1,8 @@
 from resource import call_resource
-from resources.aptitudepackage import AptitudePackage
 from resourcegraph import global_graph
+
+import resources
+resources.register()
 
 call_resource('AptitudePackage', name='aptitude')
 
