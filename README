@@ -1,6 +1,23 @@
-= System building
+= Systems building
+
+An extensible language for describing and configuring systems.
+
+== Semantics
 
 See my tomboy notes on puppet semantics, and more correct semantics
+
+== Implementation
+
+=== Resource collectors
+
+Resource collectors, a way to realize resources together.
+Could be used to realize all package constraints in one aptitude call.
+Detects incompatible constraints, and is faster.
+
+Dependencies between collected items can be handled like so:
+A, B, C packages, B depends on A.
+Step 1: collector realizes {A, C}
+Step 2: collector realizes {A, C, B}
 
 == Tools
 
@@ -19,7 +36,7 @@ Rejected
 * boost bindings
 * graphviz-based
 
-=== Templates
+=== Templating
 
 Generating config files
 
@@ -31,6 +48,12 @@ Candidates
 * python-mako
 * python-myghty
 * python-nevow
+
+=== Grammar
+
+Parsing a DSL.
+
+For now, a façade API in python is enough.
 
 === Miscellany
 

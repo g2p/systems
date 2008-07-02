@@ -43,6 +43,10 @@ class ResourceType(object):
   A type for resources.
 
   Specifies what attributes must be set.
+  There are two kinds of attributes:
+  * identity attributes, which together determine the identity of the resource.
+  Two resources differing on any of the identifying attributes are distinct.
+  * other attributes, which specify a state of the identified resource.
   """
 
   def __init__(self, name, attrs):
@@ -93,12 +97,11 @@ class Resource(object):
   """
   Abstract base for resources.
 
-  A resource has dependencies, which must be realised before itself.
+  A resource has dependencies, which must be realized before itself.
 
-  A resource is caracterised by a set of attributes.
-  Attributes determine the way it will be realised.
-  A subset of attributes is the identity of the resource,
-  and these must be unique together.
+  A resource is caracterised by a ResourceType.
+  Attributes determine the way it will be realized.
+  Realising a resource means reflecting it in the current state of the system.
   """
 
   def __init__(self, type, valdict, graph=None):
@@ -151,13 +154,22 @@ class Resource(object):
 
     pass
 
+  def is_realized(self):
+    """
+    Check whether the resource is already realized.
+    """
+
+    return False
+
   def realize(self):
     """
     Realize the resource.
 
-    Called with dependencies already realised.
+    Called with dependencies already realized.
+    Should be left unimplemented if a collector is used
+    for realizing resources of this type.
     """
 
-    pass
+    raise NotImplementedError('realize')
 
 # vim: set sw=2 ts=2 et :
