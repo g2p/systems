@@ -28,5 +28,8 @@ class Registry(object):
 
     self.__restypes[t.name] = t
 
+  @property
+  def restypes(self):
+    return dict(self.__restypes)
 
 # vim: set sw=2 ts=2 et :

@@ -10,10 +10,17 @@ class ResourceAttr(object):
   RFE: attributes that are aliases
   """
 
-  def __init__(self, name, identifying=False, naming=False):
+  def __init__(self, name, identifying=False, naming=False,
+      default_to_none=False, default_value=None):
+    # A None default_value makes this signature complicated.
+
+    if default_to_none and default_value is not None:
+      raise ValueError("Can't set both default_to_none and default_value")
     self.__name = name
     self.__identifying = identifying
     self.__naming = naming
+    self.__default_to_none = default_to_none
+    self.__default_value = default_value
 
   @property
   def name(self):
@@ -39,6 +46,33 @@ class ResourceAttr(object):
 
     return self.__identifying
 
+  @property
+  def default_value(self):
+    """
+    The default value of the attribute, or None.
+
+    Returning None can mean different things.
+    First check has_default_value or default_to_none .
+    """
+
+    return self.__default_value
+
+  @property
+  def has_default_value(self):
+    """
+    Whether the attribute can be left unset.
+    """
+
+    return self.__default_to_none or (self.__default_value is not None)
+
+  @property
+  def default_to_none(self):
+    """
+    Whether the attribute value defaults to None.
+    """
+
+    return self.__default_to_none
+
 class ResourceType(object):
   """
   A type for resources.
@@ -50,7 +84,7 @@ class ResourceType(object):
   * other attributes, which specify a state of the identified resource.
   """
 
-  def __init__(self, name, attrs):
+  def __init__(self, name, cls, attrs):
     """
     Define a resource type.
 
@@ -58,6 +92,7 @@ class ResourceType(object):
     """
 
     self.__name = name
+    self.__cls = cls
     self.__attr_dict = {}
     self.__id_attr_dict = {}
     self.__naming_attr = None
@@ -75,11 +110,22 @@ class ResourceType(object):
       if attr.identifying:
         self.__id_attr_dict[attr.name] = attr
 
-    Registry.get_singleton().register_resource_type(self)
-
   @property
   def name(self):
     return self.__name
+
+  def newinstance(self, valdict, graph):
+    return self.__cls(valdict=valdict, graph=graph)
+
+  def with_defaults(self, valdict):
+    r = dict(valdict)
+    for a in self.__attr_dict.itervalues():
+      if not a.name in r:
+        if a.has_default_value:
+          r[a.name] = a.default_value
+        else:
+          raise KeyError('Attribute %s is unset' % a.name)
+    return r
 
   def validate(self, valdict):
     """
@@ -121,12 +167,11 @@ class Resource(object):
     if graph is None:
       graph = resourcegraph.global_graph()
 
+    self.__type = type
+    self._set_valdict(self.type.with_defaults(valdict))
+
     self.__graph = graph
     self.__graph.add_resource(self)
-    self.__type = type
-    self.__valdict = valdict
-
-    type.validate(valdict)
 
   @property
   def type(self):
@@ -151,6 +196,15 @@ class Resource(object):
     """
 
     return self.type.make_identity_dict(self.__valdict)
+
+  def _set_valdict(self, valdict):
+    """
+    Set valdict and validate it.
+
+    Overriders may add additional checks.
+    """
+
+    self.__valdict = self.type.with_defaults(valdict)
 
   def prepare_deps(self):
     """
@@ -181,5 +235,10 @@ class Resource(object):
     """
 
     raise NotImplementedError('realize')
+
+def call_resource(typename, graph=None, **kwargs):
+  t = Registry.get_singleton().restypes[typename]
+  t.newinstance(graph=graph, valdict=kwargs)
+
 
 # vim: set sw=2 ts=2 et :

@@ -2,6 +2,7 @@
 import re
 import subprocess
 
+from registry import Registry
 import resource
 
 __all__ = ('AptitudePackage', )
@@ -13,25 +14,28 @@ class AptitudePackage(resource.Resource):
   Dependencies are not managed here.
   """
 
-  resource_type = resource.ResourceType('AptitutePackage', [
-      resource.ResourceAttr('name', True, True),
-      resource.ResourceAttr('version', False, False),
-      resource.ResourceAttr('state', False, False),
+  @classmethod
+  def register(cls):
+    cls.__restype = resource.ResourceType('AptitudePackage', cls,
+      [
+      resource.ResourceAttr('name',
+        identifying=True, naming=True),
+      resource.ResourceAttr('version',
+        identifying=False, naming=False, default_to_none=True),
+      resource.ResourceAttr('state',
+        identifying=False, naming=False, default_value='installed'),
     ])
+    Registry.get_singleton().register_resource_type(cls.__restype)
 
-  def __init__(self, name, version=None, state='installed', graph=None):
+  def __init__(self, valdict, graph):
     """
     Constructor.
 
     graph is the container resource graph.
     """
 
-    # I could use kargs but that wouldn't be self-documenting
-    valdict = {'name': name, 'version': version, 'state': state}
-    self.check_attrs(valdict)
-
     resource.Resource.__init__(self,
-        type=self.resource_type, valdict=valdict, graph=graph)
+        type=self.__restype, valdict=valdict, graph=graph)
 
   @classmethod
   def is_valid_pkgname(cls, name):
@@ -44,6 +48,7 @@ class AptitudePackage(resource.Resource):
     if version is None:
       return True
     # From lintian's _valid_version
+    # XXX can pass dashes
     # http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Version
     return bool(
         re.match('^(\d+:)?([-\.+:~a-z0-9]+?)(-[\.+~a-z0-9]+)?$', version))
@@ -55,16 +60,21 @@ class AptitudePackage(resource.Resource):
     # Installing and holding can't be done in a single aptitude call.
     return state in ('installed', 'uninstalled', 'purged', )
 
-  @classmethod
-  def check_attrs(cls, valdict):
-    if not cls.is_valid_pkgname(valdict['name']):
+  def _set_valdict(self, valdict):
+    """
+    Extra checks.
+    """
+
+    if not self.is_valid_pkgname(valdict['name']):
       raise ValueError('Not a valid package name')
-    if not cls.is_valid_version(valdict['version']):
+    if not self.is_valid_version(valdict['version']):
       raise ValueError('Not a valid package version')
-    if not cls.is_valid_state(valdict['state']):
+    if not self.is_valid_state(valdict['state']):
       raise ValueError('Not a valid package state')
+    super(AptitudePackage, self)._set_valdict(valdict)
 
   def is_realized(self):
+    # XXX
     pass
 
   def to_aptitude_string(self):
@@ -88,5 +98,6 @@ class AptitudePackage(resource.Resource):
       ['/usr/bin/aptitude', 'install', self.to_aptitude_string()],
       env={'DEBIAN_FRONTEND': 'noninteractive'})
 
+AptitudePackage.register()
 
 # vim: set sw=2 ts=2 et :
