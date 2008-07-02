@@ -1,4 +1,5 @@
 
+from registry import Registry
 import resourcegraph
 
 class ResourceAttr(object):
@@ -56,7 +57,7 @@ class ResourceType(object):
     Takes name, a name for the type, and attrs, an iterable of attributes.
     """
 
-    self.__type_name = name
+    self.__name = name
     self.__attr_dict = {}
     self.__id_attr_dict = {}
     self.__naming_attr = None
@@ -73,6 +74,12 @@ class ResourceType(object):
           self.__naming_attr = attr
       if attr.identifying:
         self.__id_attr_dict[attr.name] = attr
+
+    Registry.get_singleton().register_resource_type(self)
+
+  @property
+  def name(self):
+    return self.__name
 
   def validate(self, valdict):
     """
