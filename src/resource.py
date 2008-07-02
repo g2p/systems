@@ -1,4 +1,5 @@
 
+from decorators import propget, propset, propdel
 from registry import Registry
 import resourcegraph
 
@@ -114,8 +115,9 @@ class ResourceType(object):
   def name(self):
     return self.__name
 
-  def newinstance(self, valdict, graph):
-    return self.__cls(type=self, valdict=valdict, graph=graph)
+  def add_instance(self, valdict, graph):
+    i = self.__cls(type=self, valdict=valdict)
+    i.graph = graph
 
   def prepare_valdict(self, valdict):
     """
@@ -150,22 +152,18 @@ class Resource(object):
   Realising a resource means reflecting it in the current state of the system.
   """
 
-  def __init__(self, type, valdict, graph=None):
+  def __init__(self, type, valdict):
     """
     Constructor.
 
     graph is the container resource graph.
     """
 
-    if graph is None:
-      graph = resourcegraph.global_graph()
-
     self.__type = type
     self.type.prepare_valdict(valdict)
     self._set_valdict(valdict)
 
-    self.__graph = graph
-    self.__graph.add_resource(self)
+    self.__graph = None
 
   @property
   def type(self):
@@ -174,6 +172,17 @@ class Resource(object):
     """
 
     return self.__type
+
+  @propget
+  def graph(self):
+    return self.__graph
+
+  @propset
+  def graph(self, graph):
+    if self.__graph is not None:
+      raise RuntimeError('Graph can be set only once')
+    self.__graph = graph
+    self.__graph.add_resource(self)
 
   @property
   def attributes(self):
@@ -230,9 +239,9 @@ class Resource(object):
 
     raise NotImplementedError('realize')
 
-def call_resource(typename, graph=None, **kwargs):
+def add_resource(typename, graph=resourcegraph.global_graph(), **kwargs):
   t = Registry.get_singleton().restypes[typename]
-  t.newinstance(graph=graph, valdict=kwargs)
+  t.add_instance(graph=graph, valdict=kwargs)
 
 
 # vim: set sw=2 ts=2 et :
