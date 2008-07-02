@@ -117,24 +117,17 @@ class ResourceType(object):
   def newinstance(self, valdict, graph):
     return self.__cls(type=self, valdict=valdict, graph=graph)
 
-  def with_defaults(self, valdict):
-    r = dict(valdict)
+  def prepare_valdict(self, valdict):
+    """
+    Validates valdict, and explicitly adds default values to it.
+    """
+
     for a in self.__attr_dict.itervalues():
-      if not a.name in r:
+      if not a.name in valdict:
         if a.has_default_value:
-          r[a.name] = a.default_value
+          valdict[a.name] = a.default_value
         else:
           raise KeyError('Attribute %s is unset' % a.name)
-    return r
-
-  def validate(self, valdict):
-    """
-    Check that a dictionary of name, value match the type.
-
-    Raise an exception otherwise.
-    """
-
-    pass
 
   def make_identity_dict(self, valdict):
     """
@@ -168,7 +161,8 @@ class Resource(object):
       graph = resourcegraph.global_graph()
 
     self.__type = type
-    self._set_valdict(self.type.with_defaults(valdict))
+    self.type.prepare_valdict(valdict)
+    self._set_valdict(valdict)
 
     self.__graph = graph
     self.__graph.add_resource(self)
@@ -204,7 +198,7 @@ class Resource(object):
     Overriders may add additional checks.
     """
 
-    self.__valdict = self.type.with_defaults(valdict)
+    self.__valdict = valdict
 
   def prepare_deps(self):
     """
