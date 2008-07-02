@@ -1,0 +1,39 @@
+= System building
+
+See my tomboy notes on puppet semantics, and more correct semantics
+
+== Tools
+
+Find relevant libraries
+
+=== Graphs
+
+A graph data-structure
+
+Candidates
+* python-networkx
+* http://code.google.com/p/python-graph/
+
+Rejected
+* kjbuckets
+* boost bindings
+* graphviz-based
+
+=== Templates
+
+Generating config files
+
+Candidates
+* python-cheetah
+* python-empy
+* python-jinja
+* python-ll-core
+* python-mako
+* python-myghty
+* python-nevow
+
+=== Miscellany
+
+Type traits
+* python-enthought-traits
+
