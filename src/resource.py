@@ -111,7 +111,7 @@ class Resource(object):
     graph is the container resource graph.
     """
 
-    if not graph:
+    if graph is None:
       graph = resourcegraph.global_graph()
 
     self.__graph = graph
@@ -156,10 +156,13 @@ class Resource(object):
 
   def is_realized(self):
     """
-    Check whether the resource is already realized.
+    Check whether the resource is currently realized.
+
+    Not sure if this is really useful, since realize will be called anyway.
+    Maybe for post-mortem when realize has raised an exception.
     """
 
-    return False
+    raise NotImplementedError('is_realized')
 
   def realize(self):
     """

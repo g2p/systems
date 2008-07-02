@@ -15,10 +15,11 @@ class AptitudePackage(resource.Resource):
 
   resource_type = resource.ResourceType('AptitutePackage', [
       resource.ResourceAttr('name', True, True),
-      resource.ResourceAttr('version', True, False),
+      resource.ResourceAttr('version', False, False),
+      resource.ResourceAttr('state', False, False),
     ])
 
-  def __init__(self, name, version=None, graph=None):
+  def __init__(self, name, version=None, state='installed', graph=None):
     """
     Constructor.
 
@@ -26,10 +27,11 @@ class AptitudePackage(resource.Resource):
     """
 
     # I could use kargs but that wouldn't be self-documenting
-    valdict = {'name': name, 'version': version, }
+    valdict = {'name': name, 'version': version, 'state': state}
+    self.check_attrs(valdict)
+
     resource.Resource.__init__(self,
         type=self.resource_type, valdict=valdict, graph=graph)
-    self.check_attrs() #XXX has already been added to graph
 
   @classmethod
   def is_valid_pkgname(cls, name):
@@ -46,11 +48,31 @@ class AptitudePackage(resource.Resource):
     return bool(
         re.match('^(\d+:)?([-\.+:~a-z0-9]+?)(-[\.+~a-z0-9]+)?$', version))
 
-  def check_attrs(self):
-    if not self.is_valid_pkgname(self.attributes['name']):
+  @classmethod
+  def is_valid_state(cls, state):
+    return state in ('installed', 'uninstalled', 'purged', 'held', )
+
+  @classmethod
+  def check_attrs(cls, valdict):
+    if not cls.is_valid_pkgname(valdict['name']):
       raise ValueError('Not a valid package name')
-    if not self.is_valid_version(self.attributes['version']):
+    if not cls.is_valid_version(valdict['version']):
       raise ValueError('Not a valid package version')
+    if not cls.is_valid_state(valdict['state']):
+      raise ValueError('Not a valid package state')
+
+  def is_realized(self):
+    pass
+
+  def to_aptitude_string(self):
+    state = self.attributes['state']
+    r = '%(name)s' % self.attributes
+    if state in ('installed', 'held', ) \
+      and self.attributes['version'] is not None:
+        r += '=%(version)s' % self.attributes
+    r += {'installed': '+', 'purged': '_',
+        'uninstalled': '-', 'held': '=', }[state]
+    return r
 
   def realize(self):
     """
@@ -59,11 +81,9 @@ class AptitudePackage(resource.Resource):
     Throws in case of failure.
     """
 
-    if self.attributes['version'] is None:
-      pkgatvers = '%(name)s' % self.attributes
-    else:
-      pkgatvers = '%(name)s=%(version)s' % self.attributes
-    subprocess.check_call(['/usr/bin/aptitude', 'install', pkgatvers])
+    subprocess.check_call(
+      ['/usr/bin/aptitude', 'install', self.to_aptitude_string()],
+      env={'DEBIAN_FRONTEND': 'noninteractive'})
 
 
 # vim: set sw=2 ts=2 et :
