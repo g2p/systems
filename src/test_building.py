@@ -1,10 +1,14 @@
-from resource import add_resource
-from resourcegraph import global_graph
+from resource import ensure_resource, ref_resource
+from context import global_context
 
 import resources
 resources.register()
 
-add_resource('AptitudePackage', name='aptitude')
+ensure_resource('AptitudePackage',
+    name='aptitude')
+ensure_resource('AptitudePackage',
+    name='grep',
+    depends=[ref_resource('AptitudePackage', name='aptitude')])
 
 def test_bundle(pkgname):
   """
@@ -13,10 +17,10 @@ def test_bundle(pkgname):
   This is the manual way of doing it: a python function.
   """
 
-  add_resource('AptitudePackage', name=pkgname)
+  ensure_resource('AptitudePackage', name=pkgname)
 
 test_bundle('doxygen')
 
-rg = global_graph()
-rg.realize()
+gc = global_context()
+gc.realize()
 

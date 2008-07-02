@@ -1,7 +1,8 @@
 
 from decorators import propget, propset, propdel
 from registry import Registry
-import resourcegraph
+from context import global_context
+
 
 class ResourceAttr(object):
   """
@@ -52,8 +53,8 @@ class ResourceAttr(object):
     """
     The default value of the attribute, or None.
 
-    Returning None can mean different things.
-    First check has_default_value or default_to_none .
+    Returning None can mean different things,
+    first look at has_default_value or default_to_none.
     """
 
     return self.__default_value
@@ -74,13 +75,15 @@ class ResourceAttr(object):
 
     return self.__default_to_none
 
+
 class ResourceType(object):
   """
   A type for resources.
 
   Specifies what attributes must be set.
   There are two kinds of attributes:
-  * identity attributes, which together determine the identity of the resource.
+  * identifying attributes, which together determine
+  the identity of the resource.
   Two resources differing on any of the identifying attributes are distinct.
   * other attributes, which specify a state of the identified resource.
   """
@@ -115,16 +118,32 @@ class ResourceType(object):
   def name(self):
     return self.__name
 
-  def add_instance(self, valdict, graph):
-    i = self.__cls(type=self, valdict=valdict)
-    i.graph = graph
+  def ensure(self, valdict, context, extra_deps):
+    """
+    Ensure a resource is present within context.
+    """
 
-  def prepare_valdict(self, valdict):
+    i = self.__cls(type=self, valdict=valdict, context=context)
+    return context.ensure_resource(i, extra_deps, False)
+
+  def ensure_ref(self, valdict, context, extra_deps):
+    """
+    Ensure a resource reference is present within context.
+
+    The context will later make sure the reference is valid.
+    """
+
+    ref = ResourceRef(type=self, valdict=valdict, context=context)
+    return context.ensure_resource(ref, extra_deps, True)
+
+  def prepare_valdict(self, valdict, identifying_only=False):
     """
     Validates valdict, and explicitly adds default values to it.
     """
 
     for a in self.__attr_dict.itervalues():
+      if identifying_only and not a.identifying:
+        continue
       if not a.name in valdict:
         if a.has_default_value:
           valdict[a.name] = a.default_value
@@ -141,29 +160,18 @@ class ResourceType(object):
 
     return dict((k, valdict[k]) for k in self.__id_attr_dict.iterkeys())
 
-class Resource(object):
+
+class ResourceBase(object):
   """
   Abstract base for resources.
-
-  A resource has dependencies, which must be realized before itself.
-
-  A resource is caracterised by a ResourceType.
-  Attributes determine the way it will be realized.
-  Realising a resource means reflecting it in the current state of the system.
   """
 
-  def __init__(self, type, valdict):
-    """
-    Constructor.
-
-    graph is the container resource graph.
-    """
-
+  def __init__(self, type, valdict, context, identifying_only):
     self.__type = type
-    self.type.prepare_valdict(valdict)
-    self._set_valdict(valdict)
-
-    self.__graph = None
+    self.type.prepare_valdict(valdict, identifying_only)
+    self.__valdict = valdict
+    self.__context = context
+    self.__identifying_only = identifying_only
 
   @property
   def type(self):
@@ -173,16 +181,13 @@ class Resource(object):
 
     return self.__type
 
-  @propget
-  def graph(self):
-    return self.__graph
+  @property
+  def context(self):
+    """
+    The context within which unicity constraints hold
+    """
 
-  @propset
-  def graph(self, graph):
-    if self.__graph is not None:
-      raise RuntimeError('Graph can be set only once')
-    self.__graph = graph
-    self.__graph.add_resource(self)
+    return self.__context
 
   @property
   def attributes(self):
@@ -193,21 +198,46 @@ class Resource(object):
     # copy, we don't want mutability
     return dict(self.__valdict)
 
-  def identity_attributes(self):
+  @property
+  def identifying_attributes(self):
     """
     A dictionary of raw values of identifying attributes.
     """
 
-    return self.type.make_identity_dict(self.__valdict)
+    if self.__identifying_only:
+      return self.attributes
+    else:
+      return self.type.make_identity_dict(self.__valdict)
 
-  def _set_valdict(self, valdict):
+  @property
+  def identity(self):
     """
-    Set valdict and validate it.
-
-    Overriders may add additional checks.
+    A static (hashable) key.
     """
 
-    self.__valdict = valdict
+    return frozenset(self.identifying_attributes.iteritems())
+
+
+class Resource(ResourceBase):
+  """
+  A resource has dependencies, which must be realized before itself.
+
+  A resource is caracterised by a ResourceType.
+  Attributes determine the way it will be realized.
+  Realising a resource means reflecting it in the current state of the system.
+  """
+
+  def __init__(self, type, valdict, context):
+    super(Resource, self).__init__(
+        type, valdict, context, identifying_only=False)
+    self._check_valdict()
+
+  def _check_valdict(self):
+    """
+    Additional checks
+    """
+
+    pass
 
   def prepare_deps(self):
     """
@@ -239,9 +269,25 @@ class Resource(object):
 
     raise NotImplementedError('realize')
 
-def add_resource(typename, graph=resourcegraph.global_graph(), **kwargs):
+class ResourceRef(ResourceBase):
+  """
+  Reference to a Resource.
+  """
+
+  def __init__(self, type, valdict, context):
+    super(ResourceRef, self).__init__(
+        type, valdict, context, identifying_only=True)
+
+
+def ensure_resource(typename, context=global_context(), depends=(), **kwargs):
   t = Registry.get_singleton().restypes[typename]
-  t.add_instance(graph=graph, valdict=kwargs)
+  res = t.ensure(valdict=kwargs, context=context, extra_deps=depends)
+  return res
+
+def ref_resource(typename, context=global_context(), depends=(), **kwargs):
+  t = Registry.get_singleton().restypes[typename]
+  ref = t.ensure_ref(valdict=kwargs, context=context, extra_deps=depends)
+  return ref
 
 
 # vim: set sw=2 ts=2 et :

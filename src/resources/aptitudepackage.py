@@ -50,18 +50,17 @@ class AptitudePackage(resource.Resource):
     # Installing and holding can't be done in a single aptitude call.
     return state in ('installed', 'uninstalled', 'purged', )
 
-  def _set_valdict(self, valdict):
+  def _check_valdict(self):
     """
     Extra checks.
     """
 
-    if not self.is_valid_pkgname(valdict['name']):
+    if not self.is_valid_pkgname(self.attributes['name']):
       raise ValueError('Not a valid package name')
-    if not self.is_valid_version(valdict['version']):
+    if not self.is_valid_version(self.attributes['version']):
       raise ValueError('Not a valid package version')
-    if not self.is_valid_state(valdict['state']):
+    if not self.is_valid_state(self.attributes['state']):
       raise ValueError('Not a valid package state')
-    super(AptitudePackage, self)._set_valdict(valdict)
 
   def is_realized(self):
     # XXX
