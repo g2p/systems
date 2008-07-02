@@ -50,7 +50,10 @@ class AptitudePackage(resource.Resource):
 
   @classmethod
   def is_valid_state(cls, state):
-    return state in ('installed', 'uninstalled', 'purged', 'held', )
+    # Semantics for held are unclear. Disable hold support.
+    # A package can be held installed or held removed.
+    # Installing and holding can't be done in a single aptitude call.
+    return state in ('installed', 'uninstalled', 'purged', )
 
   @classmethod
   def check_attrs(cls, valdict):
