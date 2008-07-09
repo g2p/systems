@@ -1,13 +1,12 @@
-
 import re
 import subprocess
 
 from registry import Registry
-import resource
+from resource import Resource, ResourceType, ResourceAttr
 
 __all__ = ('AptitudePackage', )
 
-class AptitudePackage(resource.Resource):
+class AptitudePackage(Resource):
   """
   A debian package, managed by aptitude
 
@@ -16,13 +15,13 @@ class AptitudePackage(resource.Resource):
 
   @classmethod
   def register(cls):
-    cls.__restype = resource.ResourceType('AptitudePackage', cls,
+    cls.__restype = ResourceType('AptitudePackage', cls,
       [
-      resource.ResourceAttr('name',
+      ResourceAttr('name',
         identifying=True, naming=True),
-      resource.ResourceAttr('version',
+      ResourceAttr('version',
         identifying=False, naming=False, default_to_none=True),
-      resource.ResourceAttr('state',
+      ResourceAttr('state',
         identifying=False, naming=False, default_value='installed'),
     ])
     Registry.get_singleton().register_resource_type(cls.__restype)
@@ -84,7 +83,7 @@ class AptitudePackage(resource.Resource):
     """
 
     subprocess.check_call(
-      ['/usr/bin/aptitude', 'install', self.to_aptitude_string()],
+      ['/usr/bin/aptitude', 'install', '--', self.to_aptitude_string()],
       env={'DEBIAN_FRONTEND': 'noninteractive'})
 
 def register():

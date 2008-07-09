@@ -141,6 +141,10 @@ class ResourceType(object):
     Validates valdict, and explicitly adds default values to it.
     """
 
+    for k in valdict:
+      if k not in self.__attr_dict:
+        raise KeyError('Invalid attribute %s' % k)
+
     for a in self.__attr_dict.itervalues():
       if identifying_only and not a.identifying:
         continue
@@ -158,7 +162,7 @@ class ResourceType(object):
     Does not check validity of valdict.
     """
 
-    return dict((k, valdict[k]) for k in self.__id_attr_dict.iterkeys())
+    return dict((k, valdict[k]) for k in self.__id_attr_dict)
 
 
 class ResourceBase(object):

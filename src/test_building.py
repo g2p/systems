@@ -4,11 +4,14 @@ from context import global_context
 import resources
 resources.register()
 
-ensure_resource('AptitudePackage',
-    name='aptitude')
+# XXX Need to also test error checking; write scripts that fail.
+
+ensure_resource('User',
+    name='zorglub', state='absent')
+
 ensure_resource('AptitudePackage',
     name='grep',
-    depends=[ref_resource('AptitudePackage', name='aptitude')])
+    depends=[ref_resource('AptitudePackage', name='doxygen')])
 
 def test_bundle(pkgname):
   """
