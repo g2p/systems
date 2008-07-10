@@ -18,11 +18,14 @@ class AptitudePackage(Resource):
     cls.__restype = ResourceType('AptitudePackage', cls,
       [
       ResourceAttr('name',
-        identifying=True, naming=True),
+        identifying=True, naming=True,
+        valid_condition=cls.is_valid_pkgname),
       ResourceAttr('version',
-        identifying=False, naming=False, default_to_none=True),
+        identifying=False, naming=False, default_to_none=True,
+        valid_condition=cls.is_valid_version),
       ResourceAttr('state',
-        identifying=False, naming=False, default_value='installed'),
+        identifying=False, naming=False, default_value='installed',
+        valid_condition=cls.is_valid_state),
     ])
     Registry.get_singleton().register_resource_type(cls.__restype)
 
@@ -48,18 +51,6 @@ class AptitudePackage(Resource):
     # A package can be held installed or held removed.
     # Installing and holding can't be done in a single aptitude call.
     return state in ('installed', 'uninstalled', 'purged', )
-
-  def _check_valdict(self):
-    """
-    Extra checks.
-    """
-
-    if not self.is_valid_pkgname(self.attributes['name']):
-      raise ValueError('Not a valid package name')
-    if not self.is_valid_version(self.attributes['version']):
-      raise ValueError('Not a valid package version')
-    if not self.is_valid_state(self.attributes['state']):
-      raise ValueError('Not a valid package state')
 
   def is_realized(self):
     # XXX

@@ -13,7 +13,7 @@ class ResourceAttr(object):
   """
 
   def __init__(self, name, identifying=False, naming=False,
-      default_to_none=False, default_value=None):
+      default_to_none=False, default_value=None, valid_condition=None):
     # A None default_value makes this signature complicated.
 
     if default_to_none and default_value is not None:
@@ -23,6 +23,7 @@ class ResourceAttr(object):
     self.__naming = naming
     self.__default_to_none = default_to_none
     self.__default_value = default_value
+    self.__valid_condition = valid_condition
 
   @property
   def name(self):
@@ -74,6 +75,16 @@ class ResourceAttr(object):
     """
 
     return self.__default_to_none
+
+  def is_valid_value(self, val):
+    """
+    Whether the value is valid.
+    """
+
+    if self.__valid_condition is None:
+      return True
+
+    return self.__valid_condition(val)
 
 
 class ResourceType(object):
@@ -153,6 +164,9 @@ class ResourceType(object):
           valdict[a.name] = a.default_value
         else:
           raise KeyError('Attribute %s is unset' % a.name)
+      if not a.is_valid_value(valdict[a.name]):
+        raise ValueError('Incorrect value for attribute %s: %s' %
+            (a.name, valdict[a.name]))
 
   def make_identity_dict(self, valdict):
     """
