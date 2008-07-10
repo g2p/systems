@@ -6,7 +6,7 @@ import subprocess
 from registry import Registry
 from resource import Resource, ResourceType, ResourceAttr
 
-__all__ = ('User', )
+__all__ = ('register', )
 
 class User(Resource):
   """
@@ -20,9 +20,11 @@ class User(Resource):
     cls.__restype = ResourceType('User', cls,
       [
       ResourceAttr('name',
-        identifying=True, naming=True),
+        identifying=True, naming=True,
+        valid_condition=cls.is_valid_username),
       ResourceAttr('state',
-        identifying=False, naming=False, default_value='present'),
+        identifying=False, naming=False, default_value='present',
+        valid_condition=cls.is_valid_state),
     ])
     Registry.get_singleton().register_resource_type(cls.__restype)
 
@@ -34,16 +36,6 @@ class User(Resource):
   @classmethod
   def is_valid_state(cls, state):
     return state in ('present', 'absent', )
-
-  def _check_valdict(self):
-    """
-    Extra checks.
-    """
-
-    if not self.is_valid_username(self.attributes['name']):
-      raise ValueError('Not a valid user name')
-    if not self.is_valid_state(self.attributes['state']):
-      raise ValueError('Not a valid user state')
 
   def get_state(self):
     # Should implement subprocess.NULL (also called IGNORE on the mlist)

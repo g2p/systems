@@ -4,7 +4,7 @@ import subprocess
 from registry import Registry
 from resource import Resource, ResourceType, ResourceAttr
 
-__all__ = ('AptitudePackage', )
+__all__ = ('register', )
 
 class AptitudePackage(Resource):
   """
