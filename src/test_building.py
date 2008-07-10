@@ -9,6 +9,9 @@ resources.register()
 ensure_resource('User',
     name='zorglub', state='absent')
 
+ensure_resource('Command',
+    name='foo', cmdline=['/bin/echo', '434'])
+
 ensure_resource('AptitudePackage',
     name='grep',
     depends=[ref_resource('AptitudePackage', name='doxygen')])
