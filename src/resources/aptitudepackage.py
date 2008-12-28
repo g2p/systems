@@ -79,7 +79,7 @@ class AptitudePackage(Resource):
     env2['DEBIAN_FRONTEND'] = 'noninteractive'
 
     subprocess.check_call(
-      ['/usr/bin/aptitude', 'install', '--', self.to_aptitude_string()],
+      ['/usr/bin/aptitude', 'install', '-y', '--', self.to_aptitude_string()],
       env=env2)
 
 def register():

@@ -17,6 +17,7 @@ class File(Resource):
       ResourceAttr('path',
         identifying=True, naming=True,
         valid_condition=cls.is_valid_path),
+      # Not specifying contents means the file will be emptied.
       ResourceAttr('contents',
         identifying=False, naming=False,
         default_value='',
