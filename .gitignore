@@ -1,3 +1,4 @@
 *.pyc
-/python-build-stamp-2.5
 /build
+/debian/python-systems
+/python-build-stamp-2.5
