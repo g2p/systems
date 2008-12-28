@@ -40,14 +40,24 @@ Rejected
 
 Generating config files
 
-Candidates
-* python-cheetah
+Candidates (as of intrepid)
+* python-jinja2
+* python-ll-core ll.ul4c — http://www.livinglogic.de/Python/ul4c/Howto.html
+
+Rejected due to trusted templates (arbitrary reason to cull the list):
 * python-empy
-* python-jinja
-* python-ll-core
+* python-ll-core ll.xpit
 * python-mako
-* python-myghty
-* python-nevow
+* python-tempita — http://pythonpaste.org/tempita/
+
+Rejected due to lack of expressiveness (no tests):
+* string.Template — http://docs.python.org/library/string.html#template-strings
+
+Rejected
+* python-cheetah (mostly html-centric)
+* python-jinja (superceded by python-jinja2)
+* python-myghty (superceded by python-mako)
+* python-nevow (html-centric)
 
 === Grammar
 
