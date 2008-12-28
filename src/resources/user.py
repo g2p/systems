@@ -10,7 +10,7 @@ __all__ = ('register', )
 
 class User(Resource):
   """
-  A user managed on the local system (/etc/password and friends)
+  A system user managed on the local system (/etc/password and friends)
 
   Uses the debian command adduser
   """
@@ -23,8 +23,17 @@ class User(Resource):
         identifying=True, naming=True,
         valid_condition=cls.is_valid_username),
       ResourceAttr('state',
-        identifying=False, naming=False, default_value='present',
+        identifying=False, naming=False,
+        default_value='present',
         valid_condition=cls.is_valid_state),
+      ResourceAttr('home',
+        identifying=False, naming=False,
+        default_to_none=True,
+        valid_condition=cls.is_valid_home),
+      ResourceAttr('shell',
+        identifying=False, naming=False,
+        default_to_none=True,
+        valid_condition=cls.is_valid_shell),
     ])
     Registry.get_singleton().register_resource_type(cls.__restype)
 
@@ -36,6 +45,14 @@ class User(Resource):
   @classmethod
   def is_valid_state(cls, state):
     return state in ('present', 'absent', )
+
+  @classmethod
+  def is_valid_home(cls, home):
+    return home is None or bool(re.match('^/[/a-z0-9_-]*$', home))
+
+  @classmethod
+  def is_valid_shell(cls, shell):
+    return shell is None or bool(re.match('^/[/a-z0-9_-]*$', shell))
 
   def get_state(self):
     # Should implement subprocess.NULL (also called IGNORE on the mlist)
@@ -55,11 +72,15 @@ class User(Resource):
 
     print self.attributes['state']
     if self.attributes['state'] == 'present':
-      subprocess.check_call(['/usr/sbin/adduser', '--system',
-        '--', self.attributes['name']])
+      cmd = ['/usr/sbin/adduser', '--system', '--disabled-password', ]
+      if self.attributes['home'] is not None:
+        cmd.extend(['--home', self.attributes['home']])
+      if self.attributes['shell'] is not None:
+        cmd.extend(['--shell', self.attributes['shell']])
     else:
-      subprocess.check_call(['/usr/sbin/deluser',
-        '--', self.attributes['name']])
+      cmd = ['/usr/sbin/deluser', ]
+    cmd.extend(['--', self.attributes['name']])
+    subprocess.check_call(cmd)
 
 def register():
   User.register()
