@@ -12,20 +12,26 @@ ensure_resource('User',
 ensure_resource('Command',
     name='foo', cmdline=['/bin/echo', '434'])
 
-ensure_resource('AptitudePackage',
-    name='grep',
-    depends=[ref_resource('AptitudePackage', name='doxygen')])
 
-def test_bundle(pkgname):
-  """
-  Bundles, to supersede puppet defines and classes.
+def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
+  ensure_resource('AptitudePackage',
+      name='gitosis')
 
-  This is the manual way of doing it: a python function.
-  """
+  ensure_resource('User',
+      name=user_name, home=user_home, shell='/bin/sh')
 
-  ensure_resource('AptitudePackage', name=pkgname)
-
-test_bundle('doxygen')
+  # pub file is used unquoted in an sh line
+  ensure_resource('Command',
+      name='setup-gitosis',
+      cmdline=[
+        '/usr/bin/sudo', '-H', '-u', user_name, 'sh', '-c',
+        'cat %s | /usr/bin/gitosis-init' % pub_file],
+      unless=[
+        '/usr/bin/test', '-f', user_home+'/.gitosis.conf'],
+      depends=[
+        ref_resource('AptitudePackage', name='gitosis'),
+        ref_resource('User', name=user_name)])
+test_gitosis('g2p-moulinex.pub')
 
 gc = global_context()
 gc.realize()
