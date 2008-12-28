@@ -1,3 +1,5 @@
+import jinja2
+
 from resource import ensure_resource, ref_resource
 from context import global_context
 
@@ -12,8 +14,11 @@ ensure_resource('User',
 ensure_resource('Command',
     name='foo', cmdline=['/bin/echo', '434'])
 
+template = jinja2.Template('Hello {{ whomever }}!\n')
+
 ensure_resource('File',
-    path='/tmp/testfile', contents='Forget the blues\n')
+    path='/tmp/testfile',
+    contents=template.render(name='Jane Doe').encode('utf8'))
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   ensure_resource('AptitudePackage',
