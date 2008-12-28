@@ -1,3 +1,4 @@
+# vim: set fileencoding=utf-8 sw=2 ts=2 et :
 from __future__ import with_statement
 import os
 import re
@@ -68,7 +69,7 @@ class User(Resource):
 
   def realize(self):
     if self.get_state() == self.attributes['state']:
-      return
+      return #XXX — shell and home may need to be changed
 
     print self.attributes['state']
     if self.attributes['state'] == 'present':
@@ -85,4 +86,3 @@ class User(Resource):
 def register():
   User.register()
 
-# vim: set sw=2 ts=2 et :

@@ -1,4 +1,6 @@
+# vim: set fileencoding=utf-8 sw=2 ts=2 et :
 import re
+import os
 import subprocess
 
 from registry import Registry
@@ -73,11 +75,13 @@ class AptitudePackage(Resource):
     Throws in case of failure.
     """
 
+    env2 = dict(os.environ)
+    env2['DEBIAN_FRONTEND'] = 'noninteractive'
+
     subprocess.check_call(
       ['/usr/bin/aptitude', 'install', '--', self.to_aptitude_string()],
-      env={'DEBIAN_FRONTEND': 'noninteractive'})
+      env=env2)
 
 def register():
   AptitudePackage.register()
 
-# vim: set sw=2 ts=2 et :

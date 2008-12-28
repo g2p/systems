@@ -12,6 +12,8 @@ ensure_resource('User',
 ensure_resource('Command',
     name='foo', cmdline=['/bin/echo', '434'])
 
+ensure_resource('File',
+    path='/tmp/testfile', contents='Forget the blues\n')
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   ensure_resource('AptitudePackage',
@@ -31,7 +33,7 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
       depends=[
         ref_resource('AptitudePackage', name='gitosis'),
         ref_resource('User', name=user_name)])
-test_gitosis('g2p-moulinex.pub')
+#test_gitosis('g2p-moulinex.pub')
 
 gc = global_context()
 gc.realize()

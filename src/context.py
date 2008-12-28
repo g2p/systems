@@ -1,3 +1,4 @@
+# vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 import networkx as NX
 
@@ -121,4 +122,3 @@ def global_context():
     __global_context = Context()
   return __global_context
 
-# vim: set sw=2 ts=2 et :

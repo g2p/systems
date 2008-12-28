@@ -1,3 +1,4 @@
+# vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 from decorators import propget, propset, propdel
 from registry import Registry
@@ -252,7 +253,12 @@ class Resource(ResourceBase):
 
   def _check_valdict(self):
     """
-    Additional checks
+    Additional checks for invalid combinations of attributes.
+
+    Individual attributes have already been checked,
+    but the combination hasn't.
+
+    You may raise a ValueError if the values are incorrect together.
     """
 
     pass
@@ -308,4 +314,3 @@ def ref_resource(typename, context=global_context(), depends=(), **kwargs):
   return ref
 
 
-# vim: set sw=2 ts=2 et :

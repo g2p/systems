@@ -1,3 +1,4 @@
+# vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 def register():
   import aptitudepackage
@@ -6,4 +7,6 @@ def register():
   command.register()
   import user
   user.register()
+  import file
+  file.register()
 

@@ -1,3 +1,4 @@
+# vim: set fileencoding=utf-8 sw=2 ts=2 et :
 from __future__ import with_statement
 import subprocess
 
@@ -37,4 +38,3 @@ class Command(Resource):
 def register():
   Command.register()
 
-# vim: set sw=2 ts=2 et :

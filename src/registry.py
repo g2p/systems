@@ -1,3 +1,4 @@
+# vim: set fileencoding=utf-8 sw=2 ts=2 et :
 class Registry(object):
   """
   A registry for resource types.
@@ -32,4 +33,3 @@ class Registry(object):
   def restypes(self):
     return dict(self.__restypes)
 
-# vim: set sw=2 ts=2 et :
