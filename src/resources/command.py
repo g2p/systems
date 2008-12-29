@@ -2,8 +2,8 @@
 from __future__ import with_statement
 import subprocess
 
-from registry import Registry
-from resource import Resource, ResourceType, ResourceAttr
+from systems.registry import Registry
+from systems.resource import Resource, ResourceType, ResourceAttr
 
 __all__ = ('register', )
 

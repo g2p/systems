@@ -4,8 +4,8 @@ from __future__ import with_statement
 # use posixpath for platform-indepent paths
 import os
 
-from registry import Registry
-from resource import Resource, ResourceType, ResourceAttr
+from systems.registry import Registry
+from systems.resource import Resource, ResourceType, ResourceAttr
 
 __all__ = ('register', )
 

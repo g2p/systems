@@ -4,8 +4,8 @@ import os
 import re
 import subprocess
 
-from registry import Registry
-from resource import Resource, ResourceType, ResourceAttr
+from systems.registry import Registry
+from systems.resource import Resource, ResourceType, ResourceAttr
 
 __all__ = ('register', )
 

@@ -1,8 +1,8 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 from decorators import propget, propset, propdel
-from registry import Registry
-from context import global_context
+from systems.registry import Registry
+from systems.context import global_context
 
 
 class ResourceAttr(object):
