@@ -36,7 +36,7 @@ class User(Resource):
         default_to_none=True,
         valid_condition=cls.is_valid_shell),
     ])
-    Registry.get_singleton().register_resource_type(cls.__restype)
+    Registry.get_singleton().resource_types.register(cls.__restype)
 
   @classmethod
   def is_valid_username(cls, name):

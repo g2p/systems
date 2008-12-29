@@ -27,7 +27,7 @@ class File(Resource):
         default_value='present',
         valid_condition=cls.is_valid_state),
     ])
-    Registry.get_singleton().register_resource_type(cls.__restype)
+    Registry.get_singleton().resource_types.register(cls.__restype)
 
   @classmethod
   def is_valid_path(cls, path):

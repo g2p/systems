@@ -304,12 +304,12 @@ class ResourceRef(ResourceBase):
 
 
 def ensure_resource(typename, context=global_context(), depends=(), **kwargs):
-  t = Registry.get_singleton().restypes[typename]
+  t = Registry.get_singleton().resource_types.lookup(typename)
   res = t.ensure(valdict=kwargs, context=context, extra_deps=depends)
   return res
 
 def ref_resource(typename, context=global_context(), depends=(), **kwargs):
-  t = Registry.get_singleton().restypes[typename]
+  t = Registry.get_singleton().resource_types.lookup(typename)
   ref = t.ensure_ref(valdict=kwargs, context=context, extra_deps=depends)
   return ref
 

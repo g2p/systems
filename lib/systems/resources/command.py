@@ -28,7 +28,7 @@ class Command(Resource):
       ResourceAttr('unless',
         identifying=False, naming=False, default_to_none=True),
     ])
-    Registry.get_singleton().register_resource_type(cls.__restype)
+    Registry.get_singleton().resource_types.register(cls.__restype)
 
   def realize(self):
     if self.attributes['unless'] is None \
