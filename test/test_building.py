@@ -1,12 +1,10 @@
 import jinja2
 
-from resource import ensure_resource, ref_resource
-from context import global_context
+import systems.context
+import systems.resources
+from systems.resource import ensure_resource, ref_resource
 
-import resources
-resources.register()
-
-# XXX Need to also test error checking; write scripts that fail.
+systems.resources.register()
 
 ensure_resource('User',
     name='zorglub', state='absent')
@@ -14,7 +12,8 @@ ensure_resource('User',
 ensure_resource('Command',
     name='foo', cmdline=['/bin/echo', '434'])
 
-template = jinja2.Template('Hello {{ whomever }}!\n')
+env = jinja2.Environment(undefined=jinja2.StrictUndefined)
+template = env.from_string('Hello {{ name }}!\n')
 
 ensure_resource('File',
     path='/tmp/testfile',
@@ -40,6 +39,6 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
         ref_resource('User', name=user_name)])
 #test_gitosis('g2p-moulinex.pub')
 
-gc = global_context()
+gc = systems.context.global_context()
 gc.realize()
 
