@@ -70,3 +70,8 @@ For now, a façade API in python is enough.
 Type traits
 * python-enthought-traits
 
+== Troubleshooting
+
+What is causing that unexpected "434" output?
+sudo PYTHONPATH=src python -u -m trace --trace --ignore-dir /usr:/var test/test_building.py
+
