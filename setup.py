@@ -6,5 +6,5 @@ setup(name='Systems',
       author='Gabriel de Perthuis',
       author_email='g2p.code@gmail.com',
       packages=['systems', 'systems.resources', ],
-      package_dir={'systems': 'src'}
+      package_dir={'': 'lib'}
      )
