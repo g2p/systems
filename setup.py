@@ -40,6 +40,7 @@ setup(name='Systems',
       long_description='Systems allows you to write a declarative description\n'
         +'of the resources that make up a system,\n'
         +'and enforce this description.\n',
+      requires=['networkx', ],
       packages=['systems', 'systems.resources', ],
       package_dir={'': 'lib'},
       cmdclass={'debian_substvars': debian_substvars, },

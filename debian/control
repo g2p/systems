@@ -7,7 +7,7 @@ Build-Depends: cdbs, debhelper, python-support, python-all
 
 Package: python-systems
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}
+Depends: ${misc:Depends}, ${python:Depends}, python-networkx
 Provides: ${python:Provides}
 Description: ${distutils:Description}
  ${distutils:Long-Description}
