@@ -5,3 +5,6 @@ DEB_PYTHON_SYSTEM := pysupport
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
 
+install/python-systems::
+	./setup.py debian_substvars --file debian/python-systems.substvars
+

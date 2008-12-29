@@ -8,8 +8,6 @@ Build-Depends: cdbs, debhelper, python-support, python-all
 Package: python-systems
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}
-Description: a declarative language for managing system resources
- Systems allows you to
- write a declarative description of the resources that make up a system,
- and enforce this description.
+Description: ${distutils:Description}
+ ${distutils:Long-Description}
 

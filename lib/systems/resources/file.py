@@ -57,7 +57,7 @@ class File(Resource):
     s0, s1 = self.get_state(), self.attributes['state']
 
     if s1 == 'present':
-      with file(self.attributes['path'], 'wb') as f:
+      with open(self.attributes['path'], 'wb') as f:
         f.write(self.attributes['contents'])
     elif s0 == 'present':
       os.unlink(self.attributes['path'])
