@@ -2,5 +2,9 @@
 /build
 /debian/files
 /debian/python-systems
+/debian/python-systems.debhelper.log
+/debian/python-systems.postinst.debhelper
+/debian/python-systems.prerm.debhelper
+/debian/python-systems.substvars
 /dist
 /python-build-stamp-2.5
