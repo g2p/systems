@@ -16,9 +16,13 @@ class Context(object):
     self.__ref_set = {}
     self.__state = 'init'
 
-  def check_state(self, value):
-    if self.__state != value:
-      raise RuntimeError('Context state should be %s' % value)
+  def require_state(self, state):
+    """
+    Raise an exception if we are not in the required state.
+    """
+
+    if self.__state != state:
+      raise RuntimeError('Context state should be %s' % state)
 
   def ensure_resource(self, res, extra_deps, is_reference):
     """
@@ -27,7 +31,7 @@ class Context(object):
 
     from resource import ResourceRef
 
-    self.check_state('init')
+    self.require_state('init')
     id = res.identity
     if is_reference:
       set = self.__ref_set
@@ -62,13 +66,13 @@ class Context(object):
     References can be used instead of resources.
     """
 
-    self.check_state('init')
+    self.require_state('init')
     if not (resource.identity in self.__res_set
         or resource.identity in self.__ref_set):
       raise RuntimeError('First add the resource')
     for dep in dependencies:
       if not (dep.identity in self.__res_set or dep.identity in self.__ref_set):
-        raise RuntimeError('First add the resource')
+        raise RuntimeError('First add the dependent resource')
       self.__deps_graph.add_edge(dep, resource)
 
   def ensure_frozen(self):
@@ -78,7 +82,7 @@ class Context(object):
 
     if self.__state == 'frozen':
       return
-    self.check_state('init')
+    self.require_state('init')
 
     for ref in self.__ref_set.itervalues():
       id = ref.identity
