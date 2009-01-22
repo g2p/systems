@@ -30,6 +30,8 @@ class debian_substvars(Command):
      def run(self):
           m = self.distribution.metadata
           with open(self.file, 'a') as f:
+               f.write('distutils:Name=%s\n' % \
+                         m.get_name())
                f.write('distutils:Description=%s\n' % \
                          m.get_description())
                f.write('distutils:Long-Description=%s\n' % \
