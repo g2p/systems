@@ -4,6 +4,8 @@ from decorators import propget, propset, propdel
 from systems.registry import Registry
 from systems.context import global_context
 
+__all__ = ('ResourceAttr', 'ResourceType', 'Resource',
+    'ensure_resource', 'ref_resource', )
 
 class ResourceAttr(object):
   """
