@@ -59,6 +59,12 @@ class AptitudePackage(Resource):
     pass
 
   def to_aptitude_string(self):
+    """
+    A string describing a package and a desired state.
+
+    Documented in aptitude(8).
+    """
+
     state = self.attributes['state']
     r = '%(name)s' % self.attributes
     if state in ('installed', 'held', ) \

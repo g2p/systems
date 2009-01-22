@@ -184,7 +184,7 @@ class ResourceType(object):
 
 class ResourceBase(object):
   """
-  Abstract base for resources.
+  Abstract base for resources and resource references.
   """
 
   def __init__(self, type, valdict, context, identifying_only):
@@ -241,10 +241,12 @@ class ResourceBase(object):
 
 class Resource(ResourceBase):
   """
-  A resource has dependencies, which must be realized before itself.
+  A resource, representing a state of some part of the system.
 
+  A resource has an identity that is unique among its states.
+  A resource has dependencies, which must be realized before itself.
   A resource is caracterised by a ResourceType.
-  Attributes determine the way it will be realized.
+  Attributes determine the way a resource will be realized.
   Realising a resource means reflecting it in the current state of the system.
   """
 
@@ -282,6 +284,8 @@ class Resource(ResourceBase):
     Maybe for post-mortem when realize has raised an exception.
     """
 
+    # XXX Not used
+
     raise NotImplementedError('is_realized')
 
   def realize(self):
@@ -294,6 +298,16 @@ class Resource(ResourceBase):
     """
 
     raise NotImplementedError('realize')
+
+class DummyResource(Resource):
+  """
+  A dummy resource, used for sentinels.
+
+  Doesn't have a type in the registry.
+  """
+
+  def realize(self):
+    pass
 
 class ResourceRef(ResourceBase):
   """

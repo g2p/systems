@@ -78,6 +78,7 @@ class build_doc(Command):
                     prj_name=m.get_name(),
                     prj_url=m.get_url())
 
+          # Add configurability (via dist metadata)
           html_writer.write('doc/api')
 
 setup(name='Systems',
@@ -96,3 +97,4 @@ setup(name='Systems',
            'build_doc': build_doc,
            },
      )
+

@@ -10,6 +10,10 @@ from systems.resource import Resource, ResourceType, ResourceAttr
 __all__ = ('register', )
 
 class File(Resource):
+  """
+  A file in the filesystem.
+  """
+
   @classmethod
   def register(cls):
     cls.__restype = ResourceType('File', cls,
@@ -47,6 +51,10 @@ class File(Resource):
     return state in ('present', 'absent', )
 
   def get_state(self):
+    """
+    The state of the file: present or absent.
+    """
+
     # Broken symlinks still are 'present'
     if os.path.lexists(self.attributes['path']):
       return 'present'

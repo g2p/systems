@@ -1,6 +1,7 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 import networkx as NX
+from systems.decorators import propget, memoized
 
 __all__ = ('Context', 'global_context', )
 
@@ -11,10 +12,25 @@ class Context(object):
   """
 
   def __init__(self):
-    self.__deps_graph = NX.DiGraph()
+    self.__deps_graph = NX.XDiGraph()
     self.__res_set = {}
     self.__ref_set = {}
+    self.__trans_set = set()
     self.__state = 'init'
+
+  @propget
+  @memoized
+  def first_sentinel(self):
+    # XXX Should use a singleton ResourceType.
+    # Must relax the constraints on naming/identifying attrs to do that.
+    from systems.resouce import DummyResource
+    return DummyResource()
+
+  @propget
+  @memoized
+  def last_sentinel(self):
+    from systems.resouce import DummyResource
+    return DummyResource()
 
   def require_state(self, state):
     """
@@ -29,7 +45,7 @@ class Context(object):
     Add a resource or resource reference to be managed by this graph.
     """
 
-    from resource import ResourceRef
+    from systems.resource import ResourceRef
 
     self.require_state('init')
     id = res.identity
@@ -50,30 +66,29 @@ class Context(object):
 
     for d in extra_deps:
       self.ensure_resource(d, (), isinstance(d, ResourceRef))
-    self.add_dependency(res, extra_deps)
+    for extra_dep in extra_deps:
+      self.add_dependency(res, extra_dep)
     return res
 
-  def add_dependency(self, resource, dependencies):
+  def add_dependency(self, resource, dependency, transition=None):
     """
-    Adds a dependency relationship, from dependencies to a target resource.
+    Add a dependency relationship (realization ordering constraint).
 
-    resource is the resource to add dependencies to,
-    dependencies is an iterable of resources.
+    resource and dependency are resources and references,
+    and must already have been added with add_resource.
 
-    resource and dependencies must already have been added
-    with add_resource.
-
-    References can be used instead of resources.
+    transition, if passed, is a transition to run between the
+    realisation of resource and dependency.
     """
 
     self.require_state('init')
     if not (resource.identity in self.__res_set
         or resource.identity in self.__ref_set):
       raise RuntimeError('First add the resource')
-    for dep in dependencies:
-      if not (dep.identity in self.__res_set or dep.identity in self.__ref_set):
-        raise RuntimeError('First add the dependent resource')
-      self.__deps_graph.add_edge(dep, resource)
+    if not (dependency.identity in self.__res_set
+        or dependency.identity in self.__ref_set):
+      raise RuntimeError('First add the dependent resource')
+    self.__deps_graph.add_edge(dependency, resource, transition)
 
   def ensure_frozen(self):
     """
@@ -104,7 +119,7 @@ class Context(object):
 
   def realize(self):
     """
-    Realize all resources, respecting dependency order.
+    Realize all resources and transitions in dependency order.
     """
 
     self.ensure_frozen()
@@ -112,6 +127,10 @@ class Context(object):
       #XXX NX doesn't have a 1-line method for listing those cycles
       raise ValueError('Dependency graph has cycles')
     for r in NX.topological_sort(self.__deps_graph):
+      for pred in self.__deps_graph.predecessors(r):
+        transition = self.__deps_graph.get_edge(pred, r)
+        if transition is not None:
+          transition.realize()
       r.realize()
 
 
