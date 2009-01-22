@@ -7,4 +7,5 @@
 /debian/python-systems.prerm.debhelper
 /debian/python-systems.substvars
 /dist
+/doc/api
 /python-build-stamp-2.5
