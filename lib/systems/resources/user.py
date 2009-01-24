@@ -5,7 +5,8 @@ import re
 import subprocess
 
 from systems.registry import Registry
-from systems.resource import Resource, ResourceType, ResourceAttr
+from systems.resource import Resource
+from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )
 
@@ -18,21 +19,18 @@ class User(Resource):
 
   @classmethod
   def register(cls):
-    cls.__restype = ResourceType('User', cls,
+    cls.__restype = Type('User', cls,
       [
-      ResourceAttr('name',
+      AttrType('name',
         identifying=True,
         valid_condition=cls.is_valid_username),
-      ResourceAttr('state',
-        identifying=False,
+      AttrType('state',
         default_value='present',
         valid_condition=cls.is_valid_state),
-      ResourceAttr('home',
-        identifying=False,
+      AttrType('home',
         default_to_none=True,
         valid_condition=cls.is_valid_home),
-      ResourceAttr('shell',
-        identifying=False,
+      AttrType('shell',
         default_to_none=True,
         valid_condition=cls.is_valid_shell),
     ])

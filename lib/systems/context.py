@@ -2,6 +2,8 @@
 
 import networkx as NX
 
+from systems.typesystem import InstanceRef
+
 __all__ = ('Context', 'global_context', )
 
 
@@ -11,7 +13,7 @@ class Context(object):
   """
 
   def __init__(self):
-    self.__deps_graph = NX.XDiGraph()
+    self.__deps_graph = NX.DiGraph()
     # Realizables and references are managed separately,
     # until the graph is frozen.
     self.__rea_set = {}
@@ -24,7 +26,7 @@ class Context(object):
     """
 
     if self.__state != state:
-      raise RuntimeError('Context state should be %s' % state)
+      raise RuntimeError(u'Context state should be «%s»' % state)
 
   def ensure_realizable(self, r, extra_deps):
     """
@@ -33,8 +35,7 @@ class Context(object):
 
     self.require_state('init')
 
-    from systems.resource import ResourceRef
-    is_reference = isinstance(r, ResourceRef)
+    is_reference = isinstance(r, InstanceRef)
     id = r.identity
 
     if is_reference:
@@ -47,7 +48,7 @@ class Context(object):
       if res0.attributes == r.attributes:
         return res0
       else:
-        raise RuntimeError('Realizable conflict: %s, %s'% (res0, r))
+        raise RuntimeError(u'Realizable conflict: «%s» and «%s»'% (res0, r))
 
     set[id] = r
     self.__deps_graph.add_node(r)
@@ -87,7 +88,7 @@ class Context(object):
     for ref in self.__ref_set.itervalues():
       id = ref.identity
       if not id in self.__rea_set:
-        raise RuntimeError('Unresolved realizable reference, id %s' % id)
+        raise RuntimeError(u'Unresolved realizable reference, id «%s»' % id)
       rea = self.__rea_set[id]
       # Replace edges to ref with edges to rea.
       for pred in self.__deps_graph.predecessors_iter(ref):

@@ -12,7 +12,7 @@ class RegistryDict(object):
 
   def register(self, item):
     if item.name in self.__dict:
-      raise RuntimeError('Already registered: %s' % self.__dict[item.name])
+      raise RuntimeError(u'Already registered: «%s»' % self.__dict[item.name])
     self.__dict[item.name] = item
 
 

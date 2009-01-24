@@ -5,7 +5,8 @@ from __future__ import with_statement
 import os
 
 from systems.registry import Registry
-from systems.resource import Resource, ResourceType, ResourceAttr
+from systems.resource import Resource
+from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )
 
@@ -16,18 +17,16 @@ class File(Resource):
 
   @classmethod
   def register(cls):
-    cls.__restype = ResourceType('File', cls,
+    cls.__restype = Type('File', cls,
       [
-      ResourceAttr('path',
+      AttrType('path',
         identifying=True,
         valid_condition=cls.is_valid_path),
       # Not specifying contents means the file will be emptied.
-      ResourceAttr('contents',
-        identifying=False,
+      AttrType('contents',
         default_value='',
         valid_condition=cls.is_valid_contents),
-      ResourceAttr('state',
-        identifying=False,
+      AttrType('state',
         default_value='present',
         valid_condition=cls.is_valid_state),
     ])

@@ -4,7 +4,8 @@ import os
 import subprocess
 
 from systems.registry import Registry
-from systems.resource import Resource, ResourceType, ResourceAttr
+from systems.resource import Resource
+from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )
 
@@ -17,16 +18,16 @@ class AptitudePackage(Resource):
 
   @classmethod
   def register(cls):
-    cls.__restype = ResourceType('AptitudePackage', cls,
+    cls.__restype = Type('AptitudePackage', cls,
       [
-      ResourceAttr('name',
+      AttrType('name',
         identifying=True,
         valid_condition=cls.is_valid_pkgname),
-      ResourceAttr('version',
-        identifying=False, default_to_none=True,
+      AttrType('version',
+        default_to_none=True,
         valid_condition=cls.is_valid_version),
-      ResourceAttr('state',
-        identifying=False, default_value='installed',
+      AttrType('state',
+        default_value='installed',
         valid_condition=cls.is_valid_state),
     ])
     Registry.get_singleton().resource_types.register(cls.__restype)

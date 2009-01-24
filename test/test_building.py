@@ -1,11 +1,16 @@
 from __future__ import with_statement
+import sys
+
 import jinja2
 
 import systems.context
 import systems.resources
+import systems.transitions
 from systems.resource import ensure_resource, ref_resource
+from systems.transition import ensure_transition
 
 systems.resources.register()
+systems.transitions.register()
 
 ensure_resource('User',
     name='zorglub', state='absent')
@@ -21,6 +26,9 @@ ensure_resource('File',
     contents=template.render(name='Jane Doe').encode('utf8'))
 
 ensure_resource('FirstSentinel')
+
+ensure_transition('PythonCode', name='fariboles',
+    function=lambda: sys.stderr.write('Fariboles!\n'))
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   ensure_resource('AptitudePackage',

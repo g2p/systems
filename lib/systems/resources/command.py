@@ -4,7 +4,8 @@ import subprocess
 import cStringIO as StringIO
 
 from systems.registry import Registry
-from systems.resource import Resource, ResourceType, ResourceAttr
+from systems.resource import Resource
+from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )
 
@@ -20,16 +21,15 @@ class Command(Resource):
 
   @classmethod
   def register(cls):
-    cls.__restype = ResourceType('Command', cls,
+    cls.__restype = Type('Command', cls,
       [
-      ResourceAttr('name',
+      AttrType('name',
         identifying=True),
-      ResourceAttr('cmdline',
-        identifying=False),
-      ResourceAttr('input',
-        identifying=False, default_to_none=True),
-      ResourceAttr('unless',
-        identifying=False, default_to_none=True),
+      AttrType('cmdline'),
+      AttrType('input',
+        default_to_none=True),
+      AttrType('unless',
+        default_to_none=True),
     ])
     Registry.get_singleton().resource_types.register(cls.__restype)
 
