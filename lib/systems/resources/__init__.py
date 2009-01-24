@@ -3,8 +3,6 @@
 def register():
   import aptitudepackage
   aptitudepackage.register()
-  import command
-  command.register()
   import file
   file.register()
   import firstsentinel

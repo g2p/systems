@@ -4,14 +4,14 @@ import subprocess
 import cStringIO as StringIO
 
 from systems.registry import Registry
-from systems.resource import Resource
+from systems.transition import Transition
 from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )
 
-class Command(Resource):
+class Command(Transition):
   """
-  A resource, handled via a command.
+  A transition, handled via a command.
 
   Either the command is idempotent, or it is guarded by an 'unless'
   condition.
@@ -31,7 +31,7 @@ class Command(Resource):
       AttrType('unless',
         default_to_none=True),
     ])
-    Registry.get_singleton().resource_types.register(cls.__restype)
+    Registry.get_singleton().transition_types.register(cls.__restype)
 
   @classmethod
   def is_valid_input(cls, input):

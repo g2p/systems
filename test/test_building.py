@@ -15,7 +15,7 @@ systems.transitions.register()
 ensure_resource('User',
     name='zorglub', state='absent')
 
-ensure_resource('Command',
+ensure_transition('Command',
     name='foo', cmdline=['/bin/echo', 'Chatty command is chatty'])
 
 env = jinja2.Environment(undefined=jinja2.StrictUndefined)
@@ -39,7 +39,7 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
 
   with open(pub_file) as f:
     pub_file_s = f.read()
-  ensure_resource('Command',
+  ensure_transition('Command',
       name='setup-gitosis',
       cmdline=[
         '/usr/bin/sudo', '-H', '-u', user_name,
