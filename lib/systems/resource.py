@@ -190,7 +190,7 @@ class ResourceBase(RealizableBase):
   @property
   def context(self):
     """
-    The context within which unicity constraints hold
+    The context within which unicity constraints hold.
     """
 
     return self.__context
@@ -207,7 +207,7 @@ class ResourceBase(RealizableBase):
   @property
   def identity(self):
     """
-    A static (hashable) key.
+    A hashable, immutable key.
     """
 
     return self.type.make_identity(self.__valdict)
@@ -241,25 +241,6 @@ class Resource(ResourceBase):
 
     pass
 
-  def prepare_deps(self):
-    """
-    Compute dependencies and add them to the resource graph.
-
-    Called once by the resource graph.
-    """
-
-    pass
-
-
-class DummyResource(Resource):
-  """
-  A dummy resource, used for sentinels.
-
-  Doesn't have a type in the registry.
-  """
-
-  def realize(self):
-    pass
 
 class ResourceRef(ResourceBase):
   """

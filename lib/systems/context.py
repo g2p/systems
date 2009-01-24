@@ -1,7 +1,6 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 import networkx as NX
-from systems.decorators import propget, memoized
 
 __all__ = ('Context', 'global_context', )
 
@@ -13,23 +12,11 @@ class Context(object):
 
   def __init__(self):
     self.__deps_graph = NX.XDiGraph()
-    self.__res_set = {}
+    # Realizables and references are managed separately,
+    # until the graph is frozen.
+    self.__rea_set = {}
     self.__ref_set = {}
-    self.__trans_set = set()
     self.__state = 'init'
-
-  @propget
-  @memoized
-  def first_sentinel(self):
-    # XXX Should use a singleton ResourceType.
-    from systems.resouce import DummyRealizable
-    return DummyRealizable()
-
-  @propget
-  @memoized
-  def last_sentinel(self):
-    from systems.resouce import DummyRealizable
-    return DummyRealizable()
 
   def require_state(self, state):
     """
@@ -53,7 +40,7 @@ class Context(object):
     if is_reference:
       set = self.__ref_set
     else:
-      set = self.__res_set
+      set = self.__rea_set
 
     if id in set:
       res0 = set[id]
@@ -80,10 +67,10 @@ class Context(object):
     """
 
     self.require_state('init')
-    if not (dependent.identity in self.__res_set
+    if not (dependent.identity in self.__rea_set
         or dependent.identity in self.__ref_set):
       raise RuntimeError('First add the dependent realizable')
-    if not (dependency.identity in self.__res_set
+    if not (dependency.identity in self.__rea_set
         or dependency.identity in self.__ref_set):
       raise RuntimeError('First add the dependency realizable')
     self.__deps_graph.add_edge(dependency, dependent)
@@ -99,19 +86,17 @@ class Context(object):
 
     for ref in self.__ref_set.itervalues():
       id = ref.identity
-      if not id in self.__res_set:
+      if not id in self.__rea_set:
         raise RuntimeError('Unresolved realizable reference, id %s' % id)
-      res = self.__res_set[id]
+      rea = self.__rea_set[id]
+      # Replace edges to ref with edges to rea.
       for pred in self.__deps_graph.predecessors_iter(ref):
-        self.__deps_graph.add_edge(pred, res)
+        self.__deps_graph.add_edge(pred, rea)
       for succ in self.__deps_graph.successors_iter(ref):
-        self.__deps_graph.add_edge(res, succ)
+        self.__deps_graph.add_edge(rea, succ)
       self.__deps_graph.delete_node(ref)
     del self.__ref_set
-    del self.__res_set
-
-    for r in self.__deps_graph.nodes_iter():
-      r.prepare_deps()
+    del self.__rea_set
 
     self.__state = 'frozen'
 

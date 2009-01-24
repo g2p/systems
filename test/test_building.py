@@ -20,6 +20,8 @@ ensure_resource('File',
     path='/tmp/testfile',
     contents=template.render(name='Jane Doe').encode('utf8'))
 
+ensure_resource('FirstSentinel')
+
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   ensure_resource('AptitudePackage',
       name='gitosis')

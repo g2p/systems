@@ -5,8 +5,10 @@ def register():
   aptitudepackage.register()
   import command
   command.register()
-  import user
-  user.register()
   import file
   file.register()
+  import firstsentinel
+  firstsentinel.register()
+  import user
+  user.register()
 
