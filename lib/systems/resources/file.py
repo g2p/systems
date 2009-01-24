@@ -19,15 +19,15 @@ class File(Resource):
     cls.__restype = ResourceType('File', cls,
       [
       ResourceAttr('path',
-        identifying=True, naming=True,
+        identifying=True,
         valid_condition=cls.is_valid_path),
       # Not specifying contents means the file will be emptied.
       ResourceAttr('contents',
-        identifying=False, naming=False,
+        identifying=False,
         default_value='',
         valid_condition=cls.is_valid_contents),
       ResourceAttr('state',
-        identifying=False, naming=False,
+        identifying=False,
         default_value='present',
         valid_condition=cls.is_valid_state),
     ])

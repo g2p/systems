@@ -3,6 +3,7 @@
 from decorators import propget, propset, propdel
 from systems.registry import Registry
 from systems.context import global_context
+from systems.realizable import RealizableBase
 
 __all__ = ('ResourceAttr', 'ResourceType', 'Resource',
     'ensure_resource', 'ref_resource', )
@@ -15,7 +16,7 @@ class ResourceAttr(object):
   RFE: attributes that are aliases
   """
 
-  def __init__(self, name, identifying=False, naming=False,
+  def __init__(self, name, identifying=False,
       default_to_none=False, default_value=None, valid_condition=None):
     # A None default_value makes this signature complicated.
 
@@ -23,7 +24,6 @@ class ResourceAttr(object):
       raise ValueError("Can't set both default_to_none and default_value")
     self.__name = name
     self.__identifying = identifying
-    self.__naming = naming
     self.__default_to_none = default_to_none
     self.__default_value = default_value
     self.__valid_condition = valid_condition
@@ -37,17 +37,9 @@ class ResourceAttr(object):
     return self.__name
 
   @property
-  def naming(self):
-    """
-    A naming attribute can be used to recall a defined resource.
-    """
-
-    return self.__naming
-
-  @property
   def identifying(self):
     """
-    Identifying attributes must be unique together.
+    Identifying attributes can be used to recall a defined resource.
     """
 
     return self.__identifying
@@ -113,18 +105,12 @@ class ResourceType(object):
     self.__cls = cls
     self.__attr_dict = {}
     self.__id_attr_dict = {}
-    self.__naming_attr = None
 
     for attr in attrs:
       if attr.name in self.__attr_dict:
         raise ValueErrors('Cannot have two attributes with the same name')
       else:
         self.__attr_dict[attr.name] = attr
-      if attr.naming:
-        if self.__naming_attr:
-          raise ValueError('There must be exactly one naming attribute')
-        else:
-          self.__naming_attr = attr
       if attr.identifying:
         self.__id_attr_dict[attr.name] = attr
 
@@ -138,7 +124,7 @@ class ResourceType(object):
     """
 
     i = self.__cls(type=self, valdict=valdict, context=context)
-    return context.ensure_resource(i, extra_deps, False)
+    return context.ensure_realizable(i, extra_deps)
 
   def ensure_ref(self, valdict, context, extra_deps):
     """
@@ -148,7 +134,7 @@ class ResourceType(object):
     """
 
     ref = ResourceRef(type=self, valdict=valdict, context=context)
-    return context.ensure_resource(ref, extra_deps, True)
+    return context.ensure_realizable(ref, extra_deps)
 
   def prepare_valdict(self, valdict, identifying_only=False):
     """
@@ -171,18 +157,17 @@ class ResourceType(object):
         raise ValueError('Incorrect value for attribute %s: %s' %
             (a.name, valdict[a.name]))
 
-  def make_identity_dict(self, valdict):
+  def make_identity(self, valdict):
     """
-    Filters valdict for identifying attributes.
+    Makes a hashable key from the values of identifying attributes in valdict.
 
-    Returns a sub-dictionary of valdict (copied).
     Does not check validity of valdict.
     """
 
-    return dict((k, valdict[k]) for k in self.__id_attr_dict)
+    return frozenset((k, valdict[k]) for k in self.__id_attr_dict)
 
 
-class ResourceBase(object):
+class ResourceBase(RealizableBase):
   """
   Abstract base for resources and resource references.
   """
@@ -220,23 +205,12 @@ class ResourceBase(object):
     return dict(self.__valdict)
 
   @property
-  def identifying_attributes(self):
-    """
-    A dictionary of raw values of identifying attributes.
-    """
-
-    if self.__identifying_only:
-      return self.attributes
-    else:
-      return self.type.make_identity_dict(self.__valdict)
-
-  @property
   def identity(self):
     """
     A static (hashable) key.
     """
 
-    return frozenset(self.identifying_attributes.iteritems())
+    return self.type.make_identity(self.__valdict)
 
 
 class Resource(ResourceBase):
@@ -276,28 +250,6 @@ class Resource(ResourceBase):
 
     pass
 
-  def is_realized(self):
-    """
-    Check whether the resource is currently realized.
-
-    Not sure if this is really useful, since realize will be called anyway.
-    Maybe for post-mortem when realize has raised an exception.
-    """
-
-    # XXX Not used
-
-    raise NotImplementedError('is_realized')
-
-  def realize(self):
-    """
-    Realize the resource.
-
-    Called with dependencies already realized.
-    Should be left unimplemented if a collector is used
-    for realizing resources of this type.
-    """
-
-    raise NotImplementedError('realize')
 
 class DummyResource(Resource):
   """
@@ -321,12 +273,10 @@ class ResourceRef(ResourceBase):
 
 def ensure_resource(typename, context=global_context(), depends=(), **kwargs):
   t = Registry.get_singleton().resource_types.lookup(typename)
-  res = t.ensure(valdict=kwargs, context=context, extra_deps=depends)
-  return res
+  return t.ensure(valdict=kwargs, context=context, extra_deps=depends)
 
 def ref_resource(typename, context=global_context(), depends=(), **kwargs):
   t = Registry.get_singleton().resource_types.lookup(typename)
-  ref = t.ensure_ref(valdict=kwargs, context=context, extra_deps=depends)
-  return ref
+  return t.ensure_ref(valdict=kwargs, context=context, extra_deps=depends)
 
 

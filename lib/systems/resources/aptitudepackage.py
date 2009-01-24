@@ -20,13 +20,13 @@ class AptitudePackage(Resource):
     cls.__restype = ResourceType('AptitudePackage', cls,
       [
       ResourceAttr('name',
-        identifying=True, naming=True,
+        identifying=True,
         valid_condition=cls.is_valid_pkgname),
       ResourceAttr('version',
-        identifying=False, naming=False, default_to_none=True,
+        identifying=False, default_to_none=True,
         valid_condition=cls.is_valid_version),
       ResourceAttr('state',
-        identifying=False, naming=False, default_value='installed',
+        identifying=False, default_value='installed',
         valid_condition=cls.is_valid_state),
     ])
     Registry.get_singleton().resource_types.register(cls.__restype)
@@ -53,10 +53,6 @@ class AptitudePackage(Resource):
     # A package can be held installed or held removed.
     # Installing and holding can't be done in a single aptitude call.
     return state in ('installed', 'uninstalled', 'purged', )
-
-  def is_realized(self):
-    # XXX
-    pass
 
   def to_aptitude_string(self):
     """

@@ -23,13 +23,13 @@ class Command(Resource):
     cls.__restype = ResourceType('Command', cls,
       [
       ResourceAttr('name',
-        identifying=True, naming=True),
+        identifying=True),
       ResourceAttr('cmdline',
-        identifying=False, naming=False),
+        identifying=False),
       ResourceAttr('input',
-        identifying=False, naming=False, default_to_none=True),
+        identifying=False, default_to_none=True),
       ResourceAttr('unless',
-        identifying=False, naming=False, default_to_none=True),
+        identifying=False, default_to_none=True),
     ])
     Registry.get_singleton().resource_types.register(cls.__restype)
 

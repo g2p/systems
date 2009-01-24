@@ -8,7 +8,7 @@ __all__ = ('Context', 'global_context', )
 
 class Context(object):
   """
-  A graph of resources linked by dependencies.
+  A graph of realizables linked by dependencies.
   """
 
   def __init__(self):
@@ -22,15 +22,14 @@ class Context(object):
   @memoized
   def first_sentinel(self):
     # XXX Should use a singleton ResourceType.
-    # Must relax the constraints on naming/identifying attrs to do that.
-    from systems.resouce import DummyResource
-    return DummyResource()
+    from systems.resouce import DummyRealizable
+    return DummyRealizable()
 
   @propget
   @memoized
   def last_sentinel(self):
-    from systems.resouce import DummyResource
-    return DummyResource()
+    from systems.resouce import DummyRealizable
+    return DummyRealizable()
 
   def require_state(self, state):
     """
@@ -40,15 +39,17 @@ class Context(object):
     if self.__state != state:
       raise RuntimeError('Context state should be %s' % state)
 
-  def ensure_resource(self, res, extra_deps, is_reference):
+  def ensure_realizable(self, r, extra_deps):
     """
-    Add a resource or resource reference to be managed by this graph.
+    Add a realizable or realizable reference to be managed by this graph.
     """
-
-    from systems.resource import ResourceRef
 
     self.require_state('init')
-    id = res.identity
+
+    from systems.resource import ResourceRef
+    is_reference = isinstance(r, ResourceRef)
+    id = r.identity
+
     if is_reference:
       set = self.__ref_set
     else:
@@ -56,43 +57,40 @@ class Context(object):
 
     if id in set:
       res0 = set[id]
-      if res0.attributes == res.attributes:
+      if res0.attributes == r.attributes:
         return res0
       else:
-        raise RuntimeError('Resource conflict: %s, %s'% (res0, res))
+        raise RuntimeError('Realizable conflict: %s, %s'% (res0, r))
 
-    set[id] = res
-    self.__deps_graph.add_node(res)
+    set[id] = r
+    self.__deps_graph.add_node(r)
 
-    for d in extra_deps:
-      self.ensure_resource(d, (), isinstance(d, ResourceRef))
     for extra_dep in extra_deps:
-      self.add_dependency(res, extra_dep)
-    return res
+      self.ensure_realizable(extra_dep, ())
+      self.add_dependency(r, extra_dep)
+    return r
 
-  def add_dependency(self, resource, dependency, transition=None):
+  def add_dependency(self, dependent, dependency):
     """
     Add a dependency relationship (realization ordering constraint).
 
-    resource and dependency are resources and references,
-    and must already have been added with add_resource.
-
-    transition, if passed, is a transition to run between the
-    realisation of resource and dependency.
+    realizable and dependency are realizables
+    (resources, transitions or references),
+    and must already have been added with add_realizable.
     """
 
     self.require_state('init')
-    if not (resource.identity in self.__res_set
-        or resource.identity in self.__ref_set):
-      raise RuntimeError('First add the resource')
+    if not (dependent.identity in self.__res_set
+        or dependent.identity in self.__ref_set):
+      raise RuntimeError('First add the dependent realizable')
     if not (dependency.identity in self.__res_set
         or dependency.identity in self.__ref_set):
-      raise RuntimeError('First add the dependent resource')
-    self.__deps_graph.add_edge(dependency, resource, transition)
+      raise RuntimeError('First add the dependency realizable')
+    self.__deps_graph.add_edge(dependency, dependent)
 
   def ensure_frozen(self):
     """
-    Resolve references, merge identical resources, prepare dependencies.
+    Resolve references, merge identical realizables, prepare dependencies.
     """
 
     if self.__state == 'frozen':
@@ -102,7 +100,7 @@ class Context(object):
     for ref in self.__ref_set.itervalues():
       id = ref.identity
       if not id in self.__res_set:
-        raise RuntimeError('Unresolved resource reference, id %s' % id)
+        raise RuntimeError('Unresolved realizable reference, id %s' % id)
       res = self.__res_set[id]
       for pred in self.__deps_graph.predecessors_iter(ref):
         self.__deps_graph.add_edge(pred, res)
@@ -119,7 +117,7 @@ class Context(object):
 
   def realize(self):
     """
-    Realize all resources and transitions in dependency order.
+    Realize all realizables and transitions in dependency order.
     """
 
     self.ensure_frozen()
@@ -127,17 +125,13 @@ class Context(object):
       #XXX NX doesn't have a 1-line method for listing those cycles
       raise ValueError('Dependency graph has cycles')
     for r in NX.topological_sort(self.__deps_graph):
-      for pred in self.__deps_graph.predecessors(r):
-        transition = self.__deps_graph.get_edge(pred, r)
-        if transition is not None:
-          transition.realize()
       r.realize()
 
 
 __global_context = None
 def global_context():
   """
-  The global resource graph instance.
+  The global instance.
   """
 
   global __global_context
