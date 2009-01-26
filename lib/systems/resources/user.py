@@ -1,6 +1,7 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 from __future__ import with_statement
 import os
+import pwd
 import re
 import subprocess
 
@@ -53,31 +54,49 @@ class User(Resource):
   def is_valid_shell(cls, shell):
     return shell is None or bool(re.match('^/[/a-z0-9_-]*$', shell))
 
-  def get_state(self):
-    # Should implement subprocess.NULL (also called IGNORE on the mlist)
-    # Use os.devnull (:NUL on windows). subprocess.CLOSED has no fans.
-    with open(os.devnull, 'w') as nullf:
-      r = subprocess.call(
-          ['/usr/bin/id', '-u', '--', self.attributes['name']],
-          stdout=nullf, stderr=nullf)
-    if r != 0:
-      return 'absent'
+  def read_state(self):
+    name = self.attributes['name']
+    try:
+      p = pwd.getpwnam(name)
+    except KeyError:
+      state = 'absent'
+      home = None
+      shell = None
     else:
-      return 'present'
+      state = 'present'
+      home = p.pw_dir
+      shell = p.pw_shell
+    return {
+        'name': name,
+        'state': state,
+        'home': home,
+        'shell': shell,
+        }
 
   def realize(self):
-    if self.get_state() == self.attributes['state']:
-      return #XXX — shell and home may need to be changed
+    state0 = self.read_state()
+    state1 = self.attributes
+    if state0 == state1:
+      return
 
-    print self.attributes['state']
-    if self.attributes['state'] == 'present':
+    s0, s1 = state0['state'], state1['state']
+    if (s0, s1) == ('absent', 'absent'):
+      return
+    elif (s0, s1) == ('present', 'present'):
+      cmd = ['/usr/sbin/usermod', ]
+    elif (s0, s1) == ('absent', 'present'):
       cmd = ['/usr/sbin/adduser', '--system', '--disabled-password', ]
+    elif (s0, s1) == ('present', 'absent'):
+      cmd = ['/usr/sbin/deluser', ]
+    else:
+      assert False
+
+    if s1 == 'present':
       if self.attributes['home'] is not None:
         cmd.extend(['--home', self.attributes['home']])
       if self.attributes['shell'] is not None:
         cmd.extend(['--shell', self.attributes['shell']])
-    else:
-      cmd = ['/usr/sbin/deluser', ]
+
     cmd.extend(['--', self.attributes['name']])
     subprocess.check_call(cmd)
 

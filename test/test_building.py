@@ -12,11 +12,11 @@ from systems.transition import ensure_transition
 systems.resources.register()
 systems.transitions.register()
 
-ensure_resource('User',
-    name='zorglub', state='absent')
-
 ensure_transition('Command',
     name='foo', cmdline=['/bin/echo', 'Chatty command is chatty'])
+
+ensure_transition('PythonCode', name='fariboles',
+    function=lambda: sys.stderr.write('Fariboles!\n'))
 
 env = jinja2.Environment(undefined=jinja2.StrictUndefined)
 template = env.from_string('Hello {{ name }}!\n')
@@ -27,11 +27,11 @@ ensure_resource('File',
 
 ensure_resource('FirstSentinel')
 
-ensure_transition('PythonCode', name='fariboles',
-    function=lambda: sys.stderr.write('Fariboles!\n'))
-
 ensure_resource('AptitudePackage',
     name='python-networkx')
+
+ensure_resource('User',
+    name='zorglub', state='absent', shell='/bin/true')
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   ensure_resource('AptitudePackage',
