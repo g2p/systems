@@ -59,7 +59,7 @@ class User(Resource):
     with open(os.devnull, 'w') as nullf:
       r = subprocess.call(
           ['/usr/bin/id', '-u', '--', self.attributes['name']],
-          stderr=nullf)
+          stdout=nullf, stderr=nullf)
     if r != 0:
       return 'absent'
     else:

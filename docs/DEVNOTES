@@ -65,6 +65,11 @@ Parsing a DSL.
 
 For now, a façade API in python is enough.
 
+SDF may be worth investigating.
+It is supported by the environments ASF+SDF and StrategoXT.
+
+PyMeta would also work and is simple.
+
 === Miscellany
 
 Type traits
@@ -77,6 +82,8 @@ debuild --no-tgz-check -us -uc -i -I; scp ../python-systems_0.1_all.deb tefal.lo
 
 == Troubleshooting
 
-What is causing that unexpected "434" output?
+What is causing that unexpected "141" output?
 sudo PYTHONPATH=lib python -u -m trace --trace --ignore-dir /usr:/var test/test_building.py
+
+sudo PYTHONPATH=lib strace -fF -etrace=process,file,write -ostrace python test/test_building.py; sed -i '/stat/d' strace
 

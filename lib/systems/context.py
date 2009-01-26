@@ -152,7 +152,7 @@ class Context(object):
             self.__deps_graph.add_edge(merged, succ)
           self.__deps_graph.delete_node(n)
 
-    # Check we didn't introduce any cycle.
+    # Check we didn't introduce a cycle.
     assert NX.is_directed_acyclic_graph(self.__deps_graph)
     self.__state = 'frozen'
 
