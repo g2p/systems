@@ -25,18 +25,29 @@ class Command(Transition):
       [
       AttrType('name',
         identifying=True),
-      AttrType('cmdline'),
+      AttrType('cmdline',
+        valid_condition=cls.is_valid_cmdline),
       AttrType('input',
-        default_to_none=True),
+        default_to_none=True,
+        valid_condition=cls.is_valid_input),
       AttrType('unless',
-        default_to_none=True),
+        default_to_none=True,
+        valid_condition=cls.is_valid_unless),
     ])
     Registry.get_singleton().transition_types.register(cls.__restype)
+
+  @classmethod
+  def is_valid_cmdline(cls, cmdline):
+    return isinstance(cmdline, list)
 
   @classmethod
   def is_valid_input(cls, input):
     # So we needn't bother with encodings
     return input is None or isinstance(input, str)
+
+  @classmethod
+  def is_valid_unless(cls, unless):
+    return unless is None or cls.is_valid_cmdline(unless)
 
   def realize(self):
     if self.attributes['unless'] is not None \
