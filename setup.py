@@ -37,12 +37,12 @@ class debian_substvars(Command):
                f.write('distutils:Long-Description=%s\n' % \
                          self.fixup_description(m.get_long_description()))
 
-class build_doc(Command):
+class build_apidocs(Command):
      description = 'Build the API reference using epydoc'
-     user_options = []
+     user_options = [('target-dir=', None, 'target directory for api docs')]
 
      def initialize_options(self):
-          pass
+          self.target_dir = 'apidocs'
 
      def finalize_options(self):
           pass
@@ -79,7 +79,7 @@ class build_doc(Command):
                     prj_url=m.get_url())
 
           # Add configurability (via dist metadata)
-          html_writer.write('doc/api')
+          html_writer.write(self.target_dir)
 
 setup(name='Systems',
       version='0.1',
@@ -94,7 +94,7 @@ setup(name='Systems',
       package_dir={'': 'lib'},
       cmdclass={
            'debian_substvars': debian_substvars,
-           'build_doc': build_doc,
+           'build_apidocs': build_apidocs,
            },
      )
 
