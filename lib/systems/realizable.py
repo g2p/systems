@@ -2,7 +2,7 @@
 
 from systems.typesystem import InstanceBase
 
-class RealizableBase(InstanceBase):
+class Realizable(object):
   """
   Base for realizeable instances.
 
@@ -18,4 +18,7 @@ class RealizableBase(InstanceBase):
     """
 
     raise NotImplementedError('realize')
+
+class TypedRealizable(InstanceBase, Realizable):
+  pass
 

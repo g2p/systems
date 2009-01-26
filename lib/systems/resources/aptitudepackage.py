@@ -3,6 +3,8 @@ import re
 import os
 import subprocess
 
+from systems.collector import Collector
+from systems.realizable import Realizable
 from systems.registry import Registry
 from systems.resource import Resource
 from systems.typesystem import Type, AttrType
@@ -74,17 +76,49 @@ class AptitudePackage(Resource):
   def realize(self):
     """
     Install the package.
+    """
+
+    AptitudePackages([self]).realize()
+
+class AptitudePackages(Realizable):
+  def __init__(self, packages):
+    self.__packages = packages
+
+  def to_aptitude_list(self):
+    """
+    A string describing a package and a desired state.
+
+    Documented in aptitude(8).
+    """
+
+    return [p.to_aptitude_string() for p in self.__packages]
+
+  def realize(self):
+    """
+    Install the packages.
 
     Throws in case of failure.
     """
 
     env2 = dict(os.environ)
     env2['DEBIAN_FRONTEND'] = 'noninteractive'
+    cmd = ['/usr/bin/aptitude', 'install', '-y', '--', ]
+    cmd.extend(self.to_aptitude_list())
+    subprocess.check_call(cmd, env=env2)
 
-    subprocess.check_call(
-      ['/usr/bin/aptitude', 'install', '-y', '--', self.to_aptitude_string()],
-      env=env2)
+class AptitudePackageCollector(Collector):
+  def collect_filter(self, resource):
+    return isinstance(resource, AptitudePackage)
+
+  def collect(self, resources):
+    return AptitudePackages(resources)
+
+  @classmethod
+  def register(cls):
+    Registry.get_singleton().collectors \
+        .register(cls('AptitudePackageCollector'))
 
 def register():
   AptitudePackage.register()
+  AptitudePackageCollector.register()
 

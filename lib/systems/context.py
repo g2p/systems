@@ -3,6 +3,7 @@
 import networkx as NX
 
 from systems.typesystem import InstanceRef
+from systems.registry import Registry
 
 __all__ = ('Context', 'global_context', )
 
@@ -78,13 +79,16 @@ class Context(object):
 
   def ensure_frozen(self):
     """
-    Resolve references, merge identical realizables, prepare dependencies.
+    Build the finished dependency graph.
+
+    Resolve references, merge identical realizables, collect what can be.
     """
 
     if self.__state == 'frozen':
       return
     self.require_state('init')
 
+    # Resolve references, merge identical realizables
     for ref in self.__ref_set.itervalues():
       id = ref.identity
       if not id in self.__rea_set:
@@ -99,6 +103,57 @@ class Context(object):
     del self.__ref_set
     del self.__rea_set
 
+    if not NX.is_directed_acyclic_graph(self.__deps_graph):
+      #XXX NX doesn't have a 1-line method for listing those cycles
+      raise ValueError('Dependency graph has cycles')
+
+    # The rest of the method collects compatible nodes into merged nodes.
+
+    def can_merge(part0, part1):
+      for n0 in part0:
+        for n1 in part1:
+          if NX.shortest_path(self.__deps_graph, n0, n1) \
+              or NX.shortest_path(self.__deps_graph, n1, n0):
+                return False
+      return True
+    def may_merge(partition):
+      # Merge once if possible. Return true if did merge.
+      e = dict(enumerate(partition))
+      n = len(partition)
+      # Loop over the triangle of unordered pairs
+      for i in xrange(n):
+        for j in xrange(i + 1, n):
+          part0, part1 = e[i], e[j]
+          if can_merge(part0, part1):
+            partition.add(part0.union(part1))
+            partition.remove(part0)
+            partition.remove(part1)
+            return True
+      return False
+    reg = Registry.get_singleton()
+    for collector_name in reg.collectors:
+      collector = reg.collectors.lookup(collector_name)
+      partition = set(frozenset((r, ))
+          for r in self.__deps_graph
+          if collector.collect_filter(r))
+      # Not a particularly efficient algorithm, just simple.
+      # Also there are multiple solutions.
+      while may_merge(partition):
+        pass
+      for part in partition:
+        if len(part) == 1:
+          continue
+        merged = collector.collect(part)
+        self.__deps_graph.add_node(merged)
+        for n in part:
+          for pred in self.__deps_graph.predecessors_iter(n):
+            self.__deps_graph.add_edge(pred, merged)
+          for succ in self.__deps_graph.successors_iter(n):
+            self.__deps_graph.add_edge(merged, succ)
+          self.__deps_graph.delete_node(n)
+
+    # Check we didn't introduce any cycle.
+    assert NX.is_directed_acyclic_graph(self.__deps_graph)
     self.__state = 'frozen'
 
   def realize(self):
@@ -107,9 +162,6 @@ class Context(object):
     """
 
     self.ensure_frozen()
-    if not NX.is_directed_acyclic_graph(self.__deps_graph):
-      #XXX NX doesn't have a 1-line method for listing those cycles
-      raise ValueError('Dependency graph has cycles')
     for r in NX.topological_sort(self.__deps_graph):
       r.realize()
 

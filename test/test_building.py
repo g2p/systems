@@ -30,6 +30,9 @@ ensure_resource('FirstSentinel')
 ensure_transition('PythonCode', name='fariboles',
     function=lambda: sys.stderr.write('Fariboles!\n'))
 
+ensure_resource('AptitudePackage',
+    name='python-networkx')
+
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   ensure_resource('AptitudePackage',
       name='gitosis')

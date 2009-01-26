@@ -78,7 +78,6 @@ class build_apidocs(Command):
                     prj_name=m.get_name(),
                     prj_url=m.get_url())
 
-          # Add configurability (via dist metadata)
           html_writer.write(self.target_dir)
 
 setup(name='Systems',

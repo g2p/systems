@@ -2,12 +2,12 @@
 
 from systems.registry import Registry
 from systems.context import global_context
-from systems.realizable import RealizableBase
+from systems.realizable import TypedRealizable
 
 __all__ = ('Resource', 'ensure_resource', 'ref_resource', )
 
 
-class Resource(RealizableBase):
+class Resource(TypedRealizable):
   """
   A resource, representing a state of some part of the system.
 

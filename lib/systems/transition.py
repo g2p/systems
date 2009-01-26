@@ -1,10 +1,10 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 from systems.context import global_context
-from systems.realizable import RealizableBase
+from systems.realizable import TypedRealizable
 from systems.registry import Registry
 
-class TransitionBase(RealizableBase):
+class TransitionBase(TypedRealizable):
   pass
 
 class IdempotentTransition(TransitionBase):

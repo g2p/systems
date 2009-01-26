@@ -15,9 +15,11 @@ class RegistryDict(object):
       raise RuntimeError(u'Already registered: «%s»' % self.__dict[item.name])
     self.__dict[item.name] = item
 
-
   def lookup(self, name):
     return self.__dict[name]
+
+  def __iter__(self):
+    return iter(self.__dict)
 
 class Registry(object):
   """
@@ -42,6 +44,7 @@ class Registry(object):
   def __init__(self):
     self.__resource_types = RegistryDict()
     self.__transition_types = RegistryDict()
+    self.__collectors = RegistryDict()
 
   @property
   def resource_types(self):
@@ -50,4 +53,8 @@ class Registry(object):
   @property
   def transition_types(self):
     return self.__transition_types
+
+  @property
+  def collectors(self):
+    return self.__collectors
 
