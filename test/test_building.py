@@ -1,11 +1,12 @@
+# vim: set fileencoding=utf-8 sw=2 ts=2 et :
+
 from __future__ import with_statement
 import sys
-
-import jinja2
 
 import systems.context
 import systems.resources
 import systems.transitions
+from systems.util.templates import build_and_render
 from systems.resource import ensure_resource, ref_resource
 from systems.transition import ensure_transition
 from systems.composites.postgresql.cluster import Cluster
@@ -20,12 +21,12 @@ ensure_transition('Command',
 ensure_transition('PythonCode', name='fariboles',
     function=lambda: sys.stderr.write('Fariboles!\n'))
 
-env = jinja2.Environment(undefined=jinja2.StrictUndefined)
-template = env.from_string('Hello {{ name }}!\n')
-
 ensure_resource('File',
     path='/tmp/testfile',
-    contents=template.render(name='Jane Doe').encode('utf8'))
+    contents=build_and_render(
+      'Hello {{ name }}!\n',
+      name='Jane Doe') \
+          .encode('utf8'))
 
 ensure_resource('FirstSentinel')
 

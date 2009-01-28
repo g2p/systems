@@ -55,7 +55,7 @@ class Cluster(object):
     if not isinstance(sql, str):
       raise TypeError
     return self.ensure_command(context,
-        cmdline=['/usr/bin/psql', '-1', '-f', '-', ], cmdline_input=sql)
+        cmdline=['/usr/bin/psql', '-At1', '-f', '-', ], cmdline_input=sql)
 
   # User check:
   # ['/usr/bin/psql', '-t', '-c', "SELECT COUNT(*) FROM pg_roles WHERE rolname = '$name'", '|', 'grep', '-q', '1', ],
