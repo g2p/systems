@@ -1,7 +1,7 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 from systems.resource import ensure_resource
-from systems.transition import ensure_transition
+from systems.transition import ensure_transition, ref_transition
 
 class Cluster(object):
   """
@@ -75,14 +75,17 @@ class Cluster(object):
           ], )
 
   def ensure_create_database(self, context, db, owner):
-    # XXX add depends
-    return self.ensure_command_privileged(context,
+    db_trans = self.ensure_command_privileged(context,
         name=('create-db', db),
         cmdline=['/usr/bin/createdb', '-e',
           '--encoding', 'UTF8',
           '--owner', owner,
           '--', db,
           ], )
+    user_trans = ref_transition('Command', context,
+        name=('create-user', owner))
+    context.add_dependency(db_trans, user_trans)
+    return db_trans
 
   def ensure_drop_database(self, context, db):
     return self.ensure_command_privileged(context,
