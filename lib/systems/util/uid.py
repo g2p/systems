@@ -1,5 +1,8 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
+# Also see http://code.google.com/p/change-process-identity/downloads/list
+# Ignore AIX and solaris ifdefs, the general case is simple.
+
 import ctypes
 import os
 
@@ -41,12 +44,16 @@ def setresgid(rgid=-1, egid=-1, sgid=-1):
     raise OSError(_errno.value, os.strerror(_errno.value))
 
 def drop_privs_permanently(uid, gid):
+  # -1 has special meaning and that complicates things.
+  if uid < 0 or gid < 0:
+    raise ValueError
   setresuid(0, 0, 0)
   setresgid(0, 0, 0)
   os.setgroups([gid])
   setresgid(gid, gid, gid)
   setresuid(uid, uid, uid)
   if getresuid() != (uid, uid, uid) \
-      or getresgid() != (gid, gid, gid):
-        raise RuntimeError('Unable to drop privileges')
+      or getresgid() != (gid, gid, gid) \
+      or os.getgroups() != [gid]:
+    raise RuntimeError('Unable to drop privileges')
 
