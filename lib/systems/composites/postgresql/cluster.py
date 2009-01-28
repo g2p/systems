@@ -1,7 +1,10 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
+import re
+
 from systems.resource import ensure_resource
 from systems.transition import ensure_transition, ref_transition
+from systems.util.templates import build_and_render
 
 class Cluster(object):
   """
@@ -85,6 +88,7 @@ class Cluster(object):
     user_trans = ref_transition('Command', context,
         name=('create-user', owner))
     context.add_dependency(db_trans, user_trans)
+    self.ensure_database_backups(context, db)
     return db_trans
 
   def ensure_drop_database(self, context, db):
@@ -93,4 +97,33 @@ class Cluster(object):
         cmdline=['/usr/bin/dropdb', '-e',
           '--', db,
           ], )
+
+  def ensure_database_backups(self, context, db):
+    if not isinstance(db, str):
+      raise TypeError
+
+    # See the run-parts manpage for restrictions on file names.
+    # We could encode stuff using dashes, but it's too much trouble.
+    if not re.match('^[a-z0-9-]*$', db):
+      raise ValueError
+
+    fname = '/etc/cron.daily/db-backup-' + db
+    template = u'''#!/bin/sh
+    set -e
+    set -u
+    [ -e /usr/bin/pg_dump ] || exit 0
+    /usr/bin/pg_dump -Fc \\
+        -f /var/backups/postgresql/{{ db }}-$(/bin/date --rfc-3339=date) \\
+        -- {{ db }}
+    '''
+    code = build_and_render(template, db=db)
+
+    cron_trans = ensure_resource('File', context,
+        path=fname,
+        mode=0700,
+        contents=code.encode('utf8'), )
+    db_trans = ref_transition('Command', context,
+        name=('create-db', db))
+    context.add_dependency(cron_trans, db_trans)
+    return cron_trans
 

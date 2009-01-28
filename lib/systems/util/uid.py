@@ -10,35 +10,35 @@ _libc = ctypes.cdll.LoadLibrary(None)
 _errno = ctypes.c_int.in_dll(_libc, 'errno')
 
 def getresuid():
-  ruid = ctypes.c_long()
-  euid = ctypes.c_long()
-  suid = ctypes.c_long()
+  ruid = ctypes.c_uint()
+  euid = ctypes.c_uint()
+  suid = ctypes.c_uint()
   res = _libc.getresuid(ctypes.byref(ruid), ctypes.byref(euid), ctypes.byref(suid))
   if res:
     raise OSError(_errno.value, os.strerror(_errno.value))
   return (ruid.value, euid.value, suid.value)
 
 def setresuid(ruid=-1, euid=-1, suid=-1):
-  ruid = ctypes.c_long(ruid)
-  euid = ctypes.c_long(euid)
-  suid = ctypes.c_long(suid)
+  ruid = ctypes.c_uint(ruid)
+  euid = ctypes.c_uint(euid)
+  suid = ctypes.c_uint(suid)
   res = _libc.setresuid(ruid, euid, suid)
   if res:
     raise OSError(_errno.value, os.strerror(_errno.value))
 
 def getresgid():
-  rgid = ctypes.c_long()
-  egid = ctypes.c_long()
-  sgid = ctypes.c_long()
+  rgid = ctypes.c_uint()
+  egid = ctypes.c_uint()
+  sgid = ctypes.c_uint()
   res = _libc.getresgid(ctypes.byref(rgid), ctypes.byref(egid), ctypes.byref(sgid))
   if res:
     raise OSError(_errno.value, os.strerror(_errno.value))
   return (rgid.value, egid.value, sgid.value)
 
 def setresgid(rgid=-1, egid=-1, sgid=-1):
-  rgid = ctypes.c_long(rgid)
-  egid = ctypes.c_long(egid)
-  sgid = ctypes.c_long(sgid)
+  rgid = ctypes.c_uint(rgid)
+  egid = ctypes.c_uint(egid)
+  sgid = ctypes.c_uint(sgid)
   res = _libc.setresgid(rgid, egid, sgid)
   if res:
     raise OSError(_errno.value, os.strerror(_errno.value))

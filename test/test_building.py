@@ -23,6 +23,7 @@ ensure_transition('PythonCode', name='fariboles',
 
 ensure_resource('File',
     path='/tmp/testfile',
+    mode=0644,
     contents=build_and_render(
       'Hello {{ name }}!\n',
       name='Jane Doe') \
@@ -59,8 +60,8 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
 test_gitosis('g2p-moulinex.pub')
 
 c = Cluster()
-c.ensure_create_user(gc, 'user_pfuuit')
-c.ensure_create_database(gc, 'db_pfuuit', 'user_pfuuit')
+c.ensure_create_user(gc, 'user-pfuuit')
+c.ensure_create_database(gc, 'db-pfuuit', 'user-pfuuit')
 
 gc.realize()
 
