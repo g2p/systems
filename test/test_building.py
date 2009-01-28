@@ -8,9 +8,11 @@ import systems.resources
 import systems.transitions
 from systems.resource import ensure_resource, ref_resource
 from systems.transition import ensure_transition
+from systems.composites.postgresql.cluster import Cluster
 
 systems.resources.register()
 systems.transitions.register()
+gc = systems.context.global_context()
 
 ensure_transition('Command',
     name='foo', cmdline=['/bin/echo', 'Chatty command is chatty'])
@@ -47,7 +49,7 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
       cmdline=[
         '/usr/bin/sudo', '-H', '-u', user_name,
         '/usr/bin/gitosis-init'],
-      input=pub_file_s,
+      cmdline_input=pub_file_s,
       unless=[
         '/usr/bin/test', '-f', user_home+'/.gitosis.conf'],
       depends=[
@@ -55,6 +57,9 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
         ref_resource('User', name=user_name)])
 test_gitosis('g2p-moulinex.pub')
 
-gc = systems.context.global_context()
+c = Cluster()
+c.ensure_create_user(gc, 'user_pfuuit')
+c.ensure_create_database(gc, 'db_pfuuit', 'user_pfuuit')
+
 gc.realize()
 
