@@ -104,8 +104,8 @@ class Type(object):
     for attr in attrs:
       if attr.name in self.__attr_dict:
         raise ValueErrors('Cannot have two attributes with the same name')
-      else:
-        self.__attr_dict[attr.name] = attr
+
+      self.__attr_dict[attr.name] = attr
       if attr.identifying:
         self.__id_attr_dict[attr.name] = attr
 
@@ -131,18 +131,13 @@ class Type(object):
     ref = InstanceRef(type=self, valdict=valdict)
     return context.ensure_realizable(ref, extra_deps)
 
-  def prepare_valdict(self, valdict, identifying_only=False):
-    """
-    Validates valdict, and explicitly adds default values to it.
-    """
-
+  @classmethod
+  def _prepare_valdict(cls, attrs, valdict):
     for k in valdict:
-      if k not in self.__attr_dict:
+      if k not in attrs:
         raise KeyError(u'Invalid attribute «%s»' % k)
 
-    for a in self.__attr_dict.itervalues():
-      if identifying_only and not a.identifying:
-        continue
+    for a in attrs.itervalues():
       if not a.name in valdict:
         if a.has_default_value:
           valdict[a.name] = a.default_value
@@ -151,6 +146,20 @@ class Type(object):
       if not a.is_valid_value(valdict[a.name]):
         raise ValueError(u'Incorrect value for attribute «%s»: «%s»' %
             (a.name, valdict[a.name]))
+
+  def prepare_valdict(self, valdict):
+    """
+    Validates the valdict, adding default values explicitly.
+    """
+
+    return self._prepare_valdict(self.__attr_dict, valdict)
+
+  def prepare_id_valdict(self, valdict):
+    """
+    Validates the identity valdict, adding default values explicitly.
+    """
+
+    return self._prepare_valdict(self.__id_attr_dict, valdict)
 
   def make_identity(self, valdict):
     """
@@ -164,14 +173,15 @@ class Type(object):
     id_vals = frozenset((k, valdict[k]) for k in self.__id_attr_dict)
     return (self.name, id_vals)
 
-class TypedBase(object):
+class _TypedBase(object):
   """
   Base class for a typed object.
+
+  Don't use directly.
   """
 
-  def __init__(self, type, valdict, identifying_only):
+  def __init__(self, type, valdict):
     self.__type = type
-    self.type.prepare_valdict(valdict, identifying_only)
     self.__valdict = valdict
 
   @property
@@ -191,29 +201,40 @@ class TypedBase(object):
     # copy, we don't want mutability
     return dict(self.__valdict)
 
+class _TypedWithIdentityBase(_TypedBase):
+  """
+  Base class for a typed, id-able object.
+
+  Don't use directly.
+  """
+
   @property
   def identity(self):
     """
     A hashable, immutable key.
     """
 
-    return self.type.make_identity(self.__valdict)
+    return self.type.make_identity(self.attributes)
 
-class InstanceBase(TypedBase):
+class InstanceBase(_TypedWithIdentityBase):
   """
-  An instance, not a reference
-  """
+  An instance, and not a reference.
 
-  def __init__(self, type, valdict):
-    super(InstanceBase, self).__init__(
-        type, valdict, identifying_only=False)
-
-class InstanceRef(TypedBase):
-  """
-  Reference to another instance.
+  Subclass this.
   """
 
   def __init__(self, type, valdict):
-    super(InstanceRef, self).__init__(
-        type, valdict, identifying_only=True)
+    type.prepare_valdict(valdict)
+    super(InstanceBase, self).__init__(type, valdict)
+
+class InstanceRef(_TypedWithIdentityBase):
+  """
+  A reference to an instance.
+
+  Use, do not subclass.
+  """
+
+  def __init__(self, type, valdict):
+    type.prepare_id_valdict(valdict)
+    super(InstanceRef, self).__init__(type, valdict)
 
