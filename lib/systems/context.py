@@ -2,7 +2,7 @@
 
 import networkx as NX
 
-from systems.typesystem import InstanceRef
+from systems.typesystem import InstanceBase, InstanceRef
 from systems.registry import Registry
 
 __all__ = ('Context', 'global_context', )
@@ -36,22 +36,19 @@ class Context(object):
 
     self.require_state('init')
 
-    is_reference = isinstance(r, InstanceRef)
-    id = r.identity
-
-    if is_reference:
-      set = self.__ref_set
-    else:
+    if isinstance(r, InstanceRef):
+      self.__ref_set[r.identity] = r
+    elif isinstance(r, InstanceBase):
       set = self.__rea_set
+      if id in set:
+        res0 = set[id]
+        if res0.attributes != r.attributes:
+          raise RuntimeError(
+              u'Realizable instance conflict: «%s» and «%s»'% (res0, r))
+      self.__rea_set[r.identity] = r
+    else:
+      raise TypeError('Neither an instance nor a reference: «%s»' % r)
 
-    if id in set:
-      res0 = set[id]
-      if res0.attributes == r.attributes:
-        return res0
-      else:
-        raise RuntimeError(u'Realizable conflict: «%s» and «%s»'% (res0, r))
-
-    set[id] = r
     self.__deps_graph.add_node(r)
 
     for extra_dep in extra_deps:
