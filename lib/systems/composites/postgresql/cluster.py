@@ -11,10 +11,7 @@ class Cluster(object):
   A postgresql database cluster.
 
   Specified by PGHOST and PGPORT;
-  those are not strictly a hostname or a port number.
-
-  TODO: nightly backups. Needs cron resource.
-  /usr/bin/pg_dump -Fc -f /var/backups/postgresql/$name-\$(date --rfc-3339=date)
+  note those are not strictly a hostname or a port number.
   """
 
   # Consider conninfo strings; problem is createuser doesn't support them.
@@ -102,7 +99,7 @@ class Cluster(object):
     if not isinstance(db, str):
       raise TypeError
 
-    # See the run-parts manpage for restrictions on file names.
+    # See the run-parts manpage for restrictions on cron file names.
     # We could encode stuff using dashes, but it's too much trouble.
     if not re.match('^[a-z0-9-]*$', db):
       raise ValueError
@@ -110,9 +107,8 @@ class Cluster(object):
     fname = '/etc/cron.daily/db-backup-' + db
     template = u'''#!/bin/sh
     set -e
-    set -u
     [ -e /usr/bin/pg_dump ] || exit 0
-    /usr/bin/pg_dump -Fc \\
+    exec /usr/bin/pg_dump -Fc \\
         -f /var/backups/postgresql/{{ db }}-$(/bin/date --rfc-3339=date) \\
         -- {{ db }}
     '''

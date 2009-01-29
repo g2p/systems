@@ -3,6 +3,7 @@
 from systems.registry import Registry
 from systems.context import global_context
 from systems.typesystem import InstanceRef
+from systems.realizable import EmptyRealizable
 
 __all__ = (
     'ensure_resource', 'ref_resource',

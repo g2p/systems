@@ -61,10 +61,18 @@ class Context(object):
     return r
 
   def require_valid_realizable(self, r):
-    if not (r.identity in self.__rea_set
-        or r.identity in self.__ref_set
-        or r in self.__anon_set):
-      raise RuntimeError('No such realizable in contest: «%s»' % r)
+    if isinstance(r, InstanceRef):
+      if r.identity in self.__ref_set:
+        return
+    elif isinstance(r, InstanceBase):
+      if r.identity in self.__rea_set:
+        return
+    elif isinstance(r, EmptyRealizable):
+      if r in self.__anon_set:
+        return
+    else:
+      raise TypeError
+    raise RuntimeError('No such realizable in contest: «%s»' % r)
 
   def add_dependency(self, dependent, dependency):
     """

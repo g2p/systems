@@ -8,7 +8,7 @@ import systems.resources
 import systems.transitions
 from systems.util.templates import build_and_render
 from systems.realizable_dsl import \
-    ensure_resource, ref_resource, ensure_transition
+    ensure_resource, ref_resource, ensure_transition, ensure_anon
 from systems.composites.postgresql.cluster import Cluster
 
 systems.resources.register()
@@ -31,11 +31,13 @@ ensure_resource('File',
 
 ensure_resource('FirstSentinel')
 
-ensure_resource('AptitudePackage',
+r1 = ensure_resource('AptitudePackage',
     name='python-networkx')
 
-ensure_resource('User',
+r2 = ensure_resource('User',
     name='zorglub', state='absent', shell='/bin/true')
+
+ensure_anon(depends=(r1, r2))
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   ensure_resource('AptitudePackage',
