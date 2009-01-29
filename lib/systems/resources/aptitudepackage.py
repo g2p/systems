@@ -4,9 +4,8 @@ import os
 import subprocess
 
 from systems.collector import Collector
-from systems.realizable import Realizable
+from systems.realizable import Realizable, Resource
 from systems.registry import Registry
-from systems.realizable import Resource
 from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )

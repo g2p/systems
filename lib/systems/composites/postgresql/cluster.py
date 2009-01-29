@@ -2,7 +2,7 @@
 
 import re
 
-from systems.realizable import \
+from systems.realizable_dsl import \
     ensure_resource, ensure_transition, ref_transition
 from systems.util.templates import build_and_render
 

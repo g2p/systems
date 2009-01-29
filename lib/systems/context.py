@@ -3,6 +3,7 @@
 import networkx as NX
 
 from systems.typesystem import InstanceBase, InstanceRef
+from systems.realizable import EmptyRealizable
 from systems.registry import Registry
 
 __all__ = ('Context', 'global_context', )
@@ -19,7 +20,7 @@ class Context(object):
     # until the graph is frozen.
     self.__rea_set = {}
     self.__ref_set = {}
-    self.__anon_set = {}
+    self.__anon_set = set()
     self.__state = 'init'
 
   def require_state(self, state):
@@ -47,6 +48,8 @@ class Context(object):
           raise RuntimeError(
               u'Realizable instance conflict: «%s» and «%s»'% (res0, r))
       self.__rea_set[r.identity] = r
+    elif isinstance(r, EmptyRealizable):
+      self.__anon_set.add(r)
     else:
       raise TypeError('Neither an instance nor a reference: «%s»' % r)
 
@@ -56,6 +59,12 @@ class Context(object):
       self.ensure_realizable(extra_dep, ())
       self.add_dependency(r, extra_dep)
     return r
+
+  def require_valid_realizable(self, r):
+    if not (r.identity in self.__rea_set
+        or r.identity in self.__ref_set
+        or r in self.__anon_set):
+      raise RuntimeError('No such realizable in contest: «%s»' % r)
 
   def add_dependency(self, dependent, dependency):
     """
@@ -67,12 +76,8 @@ class Context(object):
     """
 
     self.require_state('init')
-    if not (dependent.identity in self.__rea_set
-        or dependent.identity in self.__ref_set):
-      raise RuntimeError('First add the dependent realizable')
-    if not (dependency.identity in self.__rea_set
-        or dependency.identity in self.__ref_set):
-      raise RuntimeError('First add the dependency realizable')
+    self.require_valid_realizable(dependent)
+    self.require_valid_realizable(dependency)
     self.__deps_graph.add_edge(dependency, dependent)
 
   def ensure_frozen(self):
