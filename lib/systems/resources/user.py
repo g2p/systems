@@ -6,7 +6,7 @@ import re
 import subprocess
 
 from systems.registry import Registry
-from systems.resource import Resource
+from systems.realizable import Resource
 from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )

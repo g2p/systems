@@ -2,7 +2,7 @@
 import types
 
 from systems.registry import Registry
-from systems.transition import Transition
+from systems.realizable import Transition
 from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )

@@ -7,8 +7,8 @@ import systems.context
 import systems.resources
 import systems.transitions
 from systems.util.templates import build_and_render
-from systems.resource import ensure_resource, ref_resource
-from systems.transition import ensure_transition
+from systems.realizable import \
+    ensure_resource, ref_resource, ensure_transition
 from systems.composites.postgresql.cluster import Cluster
 
 systems.resources.register()

@@ -1,7 +1,7 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 from systems.registry import Registry
-from systems.resource import Resource
+from systems.realizable import Resource
 from systems.typesystem import Type
 
 __all__ = ('register', )

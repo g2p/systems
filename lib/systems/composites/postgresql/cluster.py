@@ -2,8 +2,8 @@
 
 import re
 
-from systems.resource import ensure_resource
-from systems.transition import ensure_transition, ref_transition
+from systems.realizable import \
+    ensure_resource, ensure_transition, ref_transition
 from systems.util.templates import build_and_render
 
 class Cluster(object):

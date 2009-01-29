@@ -5,7 +5,7 @@ from __future__ import with_statement
 import os
 
 from systems.registry import Registry
-from systems.resource import Resource
+from systems.realizable import Resource
 from systems.typesystem import Type, AttrType
 from systems.util.syscalls import fchmod
 

@@ -15,10 +15,11 @@ class Context(object):
 
   def __init__(self):
     self.__deps_graph = NX.DiGraph()
-    # Realizables and references are managed separately,
+    # Realizables, references and anons are managed separately,
     # until the graph is frozen.
     self.__rea_set = {}
     self.__ref_set = {}
+    self.__anon_set = {}
     self.__state = 'init'
 
   def require_state(self, state):
