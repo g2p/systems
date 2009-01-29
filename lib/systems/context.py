@@ -3,13 +3,13 @@
 import networkx as NX
 
 from systems.typesystem import InstanceBase, InstanceRef
-from systems.realizable import EmptyRealizable
+from systems.realizable import Realizable, EmptyRealizable
 from systems.registry import Registry
 
 __all__ = ('Context', 'global_context', )
 
 
-class Context(object):
+class Context(Realizable):
   """
   A graph of realizables linked by dependencies.
   """
@@ -22,6 +22,11 @@ class Context(object):
     self.__ref_set = {}
     self.__anon_set = set()
     self.__state = 'init'
+    self.__first = EmptyRealizable()
+    self.__last = EmptyRealizable()
+    self.__deps_graph.add_edge(self.__first, self.__last)
+    self.__anon_set.add(self.__first)
+    self.__anon_set.add(self.__last)
 
   def require_state(self, state):
     """
@@ -58,6 +63,8 @@ class Context(object):
     for extra_dep in extra_deps:
       self.ensure_realizable(extra_dep, ())
       self.add_dependency(r, extra_dep)
+    self.add_dependency(r, self.__first)
+    self.add_dependency(self.__last, r)
     return r
 
   def require_valid_realizable(self, r):
