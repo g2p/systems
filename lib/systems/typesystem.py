@@ -113,23 +113,8 @@ class Type(object):
   def name(self):
     return self.__name
 
-  def ensure(self, valdict, context, extra_deps):
-    """
-    Ensure an instance is present within context.
-    """
-
-    i = self.__cls(type=self, valdict=valdict)
-    return context.ensure_realizable(i, extra_deps)
-
-  def ensure_ref(self, valdict, context, extra_deps):
-    """
-    Ensure a reference is present within context.
-
-    The context will later make sure the reference is valid.
-    """
-
-    ref = InstanceRef(type=self, valdict=valdict)
-    return context.ensure_realizable(ref, extra_deps)
+  def make_instance(self, valdict):
+    return self.__cls(type=self, valdict=valdict)
 
   @classmethod
   def _prepare_valdict(cls, attrs, valdict):

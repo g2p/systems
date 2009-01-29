@@ -2,7 +2,7 @@
 
 from systems.context import global_context
 from systems.registry import Registry
-from systems.typesystem import InstanceBase
+from systems.typesystem import InstanceBase, InstanceRef
 
 __all__ = ('Realizable', 'TypedRealizable',
     'Resource', 'ensure_resource', 'ref_resource',
@@ -41,15 +41,6 @@ class Resource(TypedRealizable):
   pass
 
 
-def ensure_resource(typename, context=global_context(), depends=(), **kwargs):
-  t = Registry.get_singleton().resource_types.lookup(typename)
-  return t.ensure(valdict=kwargs, context=context, extra_deps=depends)
-
-def ref_resource(typename, context=global_context(), depends=(), **kwargs):
-  t = Registry.get_singleton().resource_types.lookup(typename)
-  return t.ensure_ref(valdict=kwargs, context=context, extra_deps=depends)
-
-
 class TransitionBase(TypedRealizable):
   pass
 
@@ -64,11 +55,24 @@ class Transition(TransitionBase):
   pass
 
 
+def ensure_resource(typename, context=global_context(), depends=(), **kwargs):
+  t = Registry.get_singleton().resource_types.lookup(typename)
+  i = t.make_instance(valdict=kwargs)
+  return context.ensure_realizable(i, extra_deps=depends)
+
+def ref_resource(typename, context=global_context(), depends=(), **kwargs):
+  t = Registry.get_singleton().resource_types.lookup(typename)
+  i = InstanceRef(type=t, valdict=kwargs)
+  return context.ensure_realizable(i, extra_deps=depends)
+
 def ensure_transition(typename, context=global_context(), depends=(), **kwargs):
   t = Registry.get_singleton().transition_types.lookup(typename)
-  return t.ensure(valdict=kwargs, context=context, extra_deps=depends)
+  i = t.make_instance(valdict=kwargs)
+  return context.ensure_realizable(i, extra_deps=depends)
 
 def ref_transition(typename, context=global_context(), depends=(), **kwargs):
   t = Registry.get_singleton().transition_types.lookup(typename)
-  return t.ensure_ref(valdict=kwargs, context=context, extra_deps=depends)
+  i = InstanceRef(type=t, valdict=kwargs)
+  return context.ensure_realizable(i, extra_deps=depends)
+
 
