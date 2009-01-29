@@ -89,7 +89,14 @@ setup(name='Systems',
         +'of the resources that make up a system,\n'
         +'and enforce this description.\n',
       requires=['networkx', ],
-      packages=['systems', 'systems.resources', ],
+      packages=[
+           'systems',
+           'systems.composites',
+           'systems.composites.postgresql',
+           'systems.resources',
+           'systems.transitions',
+           'systems.util',
+           ],
       package_dir={'': 'lib'},
       cmdclass={
            'debian_substvars': debian_substvars,

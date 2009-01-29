@@ -79,12 +79,13 @@ Type traits
 == Deploying
 
 # Package not deployed locally as that would interfere with testing.
-debuild --no-tgz-check -us -uc -i -I; scp ../python-systems_0.1_all.deb tefal.local: ; ssh -t tefal.local 'sudo dpkg -i python-systems_0.1_all.deb'
+debuild --no-tgz-check -us -uc -i -I && scp ../python-systems_0.1_all.deb tefal.local: && ssh -t tefal.local 'sudo dpkg -i python-systems_0.1_all.deb'
 
 == Troubleshooting
 
-What is causing that unexpected "141" output?
+=== Python tracing
 sudo PYTHONPATH=lib python -u -m trace --trace --ignore-dir /usr:/var test/test_building.py
 
+=== Syscall tracing
 sudo PYTHONPATH=lib strace -fF -etrace=process,file,write -ostrace python test/test_building.py; sed -i '/stat/d' strace
 
