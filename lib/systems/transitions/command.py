@@ -86,24 +86,29 @@ class Command(Transition):
     preexec_fn = self.dropprivs_fn(self.attributes['username'])
 
     if self.attributes['unless'] is not None:
+      # Remember, 0 means success
       if subprocess.call(
           self.attributes['unless'],
           preexec_fn=preexec_fn,
-          env=env):
+          env=env) == 0:
         return
 
-    inf = None
-    if self.attributes['cmdline_input'] is not None:
-      inf = StringIO.StringIO(self.attributes['cmdline_input'])
-    try:
-      subprocess.check_call(
-          self.attributes['cmdline'],
-          stdin=inf,
-          preexec_fn=preexec_fn,
-          env=env)
-    finally:
-      if inf is not None:
-        inf.close()
+    if self.attributes['cmdline_input'] is None:
+      # Let stdin pass through
+      input_flag = None
+    else:
+      # We have a string to write
+      input_flag = subprocess.PIPE
+    p = subprocess.Popen(
+        self.attributes['cmdline'],
+        stdin=input_flag,
+        preexec_fn=preexec_fn,
+        env=env)
+    # Input may safely be None. Writes, waits until completion.
+    p.communicate(self.attributes['cmdline_input'])
+    if p.returncode != 0:
+      raise subprocess.CalledProcessError(
+          p.returncode, self.attributes['cmdline'])
 
 def register():
   Command.register()
