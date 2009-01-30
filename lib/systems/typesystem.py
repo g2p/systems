@@ -85,6 +85,10 @@ class AttrType(object):
 
     return self.__none_allowed
 
+  @property
+  def reader(self):
+    return self.__reader
+
   def is_valid_value(self, val):
     """
     Whether the value is valid.
@@ -113,7 +117,7 @@ class AttrType(object):
     Read the current state.
     """
 
-    return self.reader(id)
+    return self.__reader(id)
 
 
 class Identity(object):
@@ -136,6 +140,10 @@ class Identity(object):
     if k0 == k1:
       return 0
     return cmp(k0, k1)
+
+  @property
+  def type(self):
+    return self.__type
 
   @property
   def attributes(self):
@@ -247,7 +255,7 @@ class _TypedBase(object):
 
     return self.__type
 
-def ReadAttributes(object):
+class ReadAttributes(object):
   """
   Attributes read from system state.
   """
@@ -256,8 +264,11 @@ def ReadAttributes(object):
     self.__id = id
 
   def __getitem__(self, key):
-    attr = self.__id.type.attr_lookup(key)
-    return attr.read_value(self.__id)
+    try:
+      return self.__id.attributes[key]
+    except KeyError:
+      attr = self.__id.type.attr_lookup(key)
+      return attr.read_value(self.__id)
 
 class _TypedWithIdentityBase(_TypedBase):
   @property

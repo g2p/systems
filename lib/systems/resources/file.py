@@ -3,6 +3,7 @@ from __future__ import with_statement
 
 # use posixpath for platform-indepent paths
 import os
+import stat
 
 from systems.registry import Registry
 from systems.realizable import Resource
@@ -81,7 +82,7 @@ class File(Resource):
     path = id.attributes['path']
     # May return invalid mode.
     # I think it's ok; invalid modes may exist, we just don't set them.
-    return os.lstat(path).st_mode
+    return stat.S_IMODE(os.lstat(path).st_mode)
 
   def realize(self):
     # Don't let files be accessible between creation and permission setting.
