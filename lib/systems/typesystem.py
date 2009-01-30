@@ -117,6 +117,10 @@ class AttrType(object):
 
 
 class Identity(object):
+  """
+  The identity of an instance or a reference.
+  """
+
   def __init__(self, type, id_valdict):
     self.__type = type
     self.__id_valdict = id_valdict

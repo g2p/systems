@@ -106,6 +106,10 @@ class AptitudePackages(Realizable):
     subprocess.check_call(cmd, env=env2)
 
 class AptitudePackageCollector(Collector):
+  """
+  Group several aptitude package operations into one.
+  """
+
   def filter(self, resource):
     return isinstance(resource, AptitudePackage)
 
