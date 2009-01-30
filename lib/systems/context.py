@@ -106,18 +106,23 @@ class Context(Realizable):
       return
     self.require_state('init')
 
+    def replace_node(node0, node1):
+      # Method-private because it does not update our various __XX_set
+      self.__deps_graph.add_node(node1)
+      for pred in self.__deps_graph.predecessors_iter(node0):
+        self.__deps_graph.add_edge(pred, node1)
+      for succ in self.__deps_graph.successors_iter(node0):
+        self.__deps_graph.add_edge(node1, succ)
+      self.__deps_graph.delete_node(node0)
+
+
     # Resolve references, merge identical realizables
     for ref in self.__ref_set.itervalues():
       id = ref.identity
       if not id in self.__rea_set:
         raise RuntimeError(u'Unresolved realizable reference, id «%s»' % id)
       rea = self.__rea_set[id]
-      # Replace edges to ref with edges to rea.
-      for pred in self.__deps_graph.predecessors_iter(ref):
-        self.__deps_graph.add_edge(pred, rea)
-      for succ in self.__deps_graph.successors_iter(ref):
-        self.__deps_graph.add_edge(rea, succ)
-      self.__deps_graph.delete_node(ref)
+      replace_node(ref, rea)
     del self.__ref_set
     del self.__rea_set
 
@@ -151,26 +156,31 @@ class Context(Realizable):
     reg = Registry.get_singleton()
     for collector_name in reg.collectors:
       collector = reg.collectors.lookup(collector_name)
-      partition = set(frozenset((r, ))
-          for r in self.__deps_graph
-          if collector.collect_filter(r))
-      # Not a particularly efficient algorithm, just simple.
-      # Also there are multiple solutions.
-      while may_merge(partition):
-        pass
-      for part in partition:
-        if len(part) == 1:
-          continue
-        merged = collector.collect(part)
-        self.__deps_graph.add_node(merged)
-        for n in part:
-          for pred in self.__deps_graph.predecessors_iter(n):
-            self.__deps_graph.add_edge(pred, merged)
-          for succ in self.__deps_graph.successors_iter(n):
-            self.__deps_graph.add_edge(merged, succ)
-          self.__deps_graph.delete_node(n)
+      # Pre-partition is made of parts acceptable for the collector.
+      pre_partition = collector.partition(
+          [r for r in self.__deps_graph if collector.filter(r)])
+      for part in pre_partition:
+        partition = set(frozenset((r, ))
+            for r in part
+            for part in pre_partition)
 
-    # Check we didn't introduce a cycle.
+        # collector parts are split again, the sub-parts are merged
+        # when dependencies allow.
+
+        # Not a particularly efficient algorithm, just simple.
+        # Also there are multiple solutions.
+        while may_merge(partition):
+          pass
+
+        # Now we just need to collect the parts we computed.
+        for part in partition:
+          if len(part) <= 1:
+            continue
+          merged = collector.collect(part)
+          for n in part:
+            replace_node(n, merged)
+
+    # Assert we didn't introduce a cycle.
     assert NX.is_directed_acyclic_graph(self.__deps_graph)
     self.__state = 'frozen'
 

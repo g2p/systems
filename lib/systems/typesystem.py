@@ -88,6 +88,10 @@ class AttrType(object):
   def is_valid_value(self, val):
     """
     Whether the value is valid.
+
+    Checks for None (if allowed, they bypass validation).
+
+    Then check for pytype and validation functions.
     """
 
     if self.__none_allowed and val is None:
