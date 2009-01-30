@@ -48,6 +48,8 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
 
   with open(pub_file) as f:
     pub_file_s = f.read()
+  # Can't rely on user= without also changing HOME.
+  # Prefer sudo -H then. The alternative is to read a pwd entry.
   ensure_transition('Command',
       name='setup-gitosis',
       cmdline=[

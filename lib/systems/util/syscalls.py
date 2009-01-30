@@ -3,6 +3,9 @@
 import ctypes
 import os
 
+# There is a portability issue with the sizes of mode_t and uid_t.
+# Having those in ctypes would be great.
+# Otherwise, Cython could help, but may be overkill right now.
 _libc = ctypes.cdll.LoadLibrary(None)
 _errno = ctypes.c_int.in_dll(_libc, 'errno')
 

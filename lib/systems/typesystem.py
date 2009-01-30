@@ -1,5 +1,7 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
+from systems.util.datatypes import ImmutableDict
+
 __all__ = ('AttrType', 'Type', 'InstanceBase', 'InstanceRef', )
 
 
@@ -11,17 +13,34 @@ class AttrType(object):
   RFE: attributes that are aliases
   """
 
-  def __init__(self, name, identifying=False,
-      default_to_none=False, default_value=None, valid_condition=None):
-    # A None default_value makes this signature complicated.
+  def __init__(self,
+      name, identifying=False,
+      none_allowed=False, default_value=None,
+      valid_condition=None, pytype=None,
+      reader=None):
+    """
+    name: name of the attribute
+    none_allowed: whether None values are allowed
+    default_value: a default value
+    valid_condition: a check for valid values
+    pytype: a python type values must have
+    reader: reads the value from current system state
 
-    if default_to_none and default_value is not None:
-      raise ValueError("Can't set both default_to_none and default_value")
+    If none_allowed is True, None values are allowed, they bypass validation,
+    and they will be the default. default_value cannot be set in this case.
+    """
+
+    # Allowing None does complicate this signature.
+
+    if none_allowed and default_value is not None:
+      raise ValueError("Can't set both none_allowed and default_value")
     self.__name = name
     self.__identifying = identifying
-    self.__default_to_none = default_to_none
+    self.__none_allowed = none_allowed
     self.__default_value = default_value
     self.__valid_condition = valid_condition
+    self.__pytype = pytype
+    self.__reader = reader
 
   @property
   def name(self):
@@ -45,7 +64,7 @@ class AttrType(object):
     The default value of the attribute, or None.
 
     Returning None can mean different things,
-    first look at has_default_value or default_to_none.
+    first look at has_default_value or none_allowed.
     """
 
     return self.__default_value
@@ -56,26 +75,67 @@ class AttrType(object):
     Whether the attribute can be left unset.
     """
 
-    return self.__default_to_none or (self.__default_value is not None)
+    return self.__none_allowed or (self.__default_value is not None)
 
   @property
-  def default_to_none(self):
+  def none_allowed(self):
     """
     Whether the attribute value defaults to None.
     """
 
-    return self.__default_to_none
+    return self.__none_allowed
 
   def is_valid_value(self, val):
     """
     Whether the value is valid.
     """
 
-    if self.__valid_condition is None:
+    if self.__none_allowed and val is None:
       return True
 
-    return self.__valid_condition(val)
+    if self.__pytype is not None:
+      if not isinstance(val, self.__pytype):
+        return False
 
+    if self.__valid_condition is not None:
+      if not self.__valid_condition(val):
+        return False
+
+    return True
+
+
+  def read_value(self, id):
+    """
+    Read the current state.
+    """
+
+    return self.reader(id)
+
+
+class Identity(object):
+  def __init__(self, type, id_valdict):
+    self.__type = type
+    self.__id_valdict = id_valdict
+
+  def _key(self):
+    return (self.__type.name, frozenset(self.__id_valdict.iteritems()))
+
+  def __hash__(self):
+    return hash(self._key())
+
+  def __cmp__(self, other):
+    k0, k1 = self._key(), other._key()
+    if k0 == k1:
+      return 0
+    return cmp(k0, k1)
+
+  @property
+  def attributes(self):
+    """
+    Read attribute values.
+    """
+
+    return ImmutableDict(self.__id_valdict)
 
 class Type(object):
   """
@@ -132,6 +192,9 @@ class Type(object):
         raise ValueError(u'Incorrect value for attribute «%s»: «%s»' %
             (a.name, valdict[a.name]))
 
+  def attr_lookup(self, attrname):
+    return self.__attr_dict[attrname]
+
   def prepare_valdict(self, valdict):
     """
     Validates the valdict, adding default values explicitly.
@@ -155,8 +218,8 @@ class Type(object):
 
     # We should also add the type "category",
     # which is resource or transition.
-    id_vals = frozenset((k, valdict[k]) for k in self.__id_attr_dict)
-    return (self.name, id_vals)
+    id_valdict = dict((k, valdict[k]) for k in self.__id_attr_dict)
+    return Identity(self, id_valdict)
 
 class _TypedBase(object):
   """
@@ -165,9 +228,8 @@ class _TypedBase(object):
   Don't use directly.
   """
 
-  def __init__(self, type, valdict):
+  def __init__(self, type):
     self.__type = type
-    self.__valdict = valdict
 
   @property
   def type(self):
@@ -177,29 +239,31 @@ class _TypedBase(object):
 
     return self.__type
 
-  @property
-  def attributes(self):
-    """
-    A dictionary of raw attribute values.
-    """
+def ReadAttributes(object):
+  """
+  Attributes read from system state.
+  """
 
-    # copy, we don't want mutability
-    return dict(self.__valdict)
+  def __init__(self, id):
+    self.__id = id
+
+  def __getitem__(self, key):
+    attr = self.__id.type.attr_lookup(key)
+    return attr.read_value(self.__id)
 
 class _TypedWithIdentityBase(_TypedBase):
-  """
-  Base class for a typed, id-able object.
-
-  Don't use directly.
-  """
-
   @property
   def identity(self):
+    raise NotImplementedError
+
+  @property
+  def read_attributes(self):
     """
-    A hashable, immutable key.
+    A read-only dictionary of attribute values,
+    as they are read from system state.
     """
 
-    return self.type.make_identity(self.attributes)
+    return ReadAttributes(self.identity)
 
 class InstanceBase(_TypedWithIdentityBase):
   """
@@ -210,7 +274,27 @@ class InstanceBase(_TypedWithIdentityBase):
 
   def __init__(self, type, valdict):
     type.prepare_valdict(valdict)
-    super(InstanceBase, self).__init__(type, valdict)
+    self.__valdict = valdict
+    super(InstanceBase, self).__init__(type)
+
+  @property
+  def attributes(self):
+    """
+    A dictionary of raw attribute values.
+    """
+
+    i = ImmutableDict(self.__valdict)
+    if i is None:
+      raise TypeError
+    return i
+
+  @property
+  def identity(self):
+    """
+    A hashable, immutable key.
+    """
+
+    return self.type.make_identity(self.__valdict)
 
 class InstanceRef(_TypedWithIdentityBase):
   """
@@ -219,7 +303,16 @@ class InstanceRef(_TypedWithIdentityBase):
   Use, do not subclass.
   """
 
-  def __init__(self, type, valdict):
-    type.prepare_id_valdict(valdict)
-    super(InstanceRef, self).__init__(type, valdict)
+  def __init__(self, type, id_valdict):
+    type.prepare_id_valdict(id_valdict)
+    self.__id_valdict = id_valdict
+    super(InstanceRef, self).__init__(type)
+
+  @property
+  def identity(self):
+    """
+    A hashable, immutable key.
+    """
+
+    return self.type.make_identity(self.__id_valdict)
 

@@ -26,12 +26,16 @@ class File(Resource):
       # Not specifying contents means the file will be emptied.
       AttrType('contents',
         default_value='',
-        valid_condition=cls.is_valid_contents),
+        reader=cls.read_contents,
+        # A byte string, no encoding
+        pytype=str),
       AttrType('state',
         default_value='present',
+        reader=cls.read_state,
         valid_condition=cls.is_valid_state),
       AttrType('mode',
         default_value=0600,
+        reader=cls.read_mode,
         valid_condition=cls.is_valid_mode),
     ])
     Registry.get_singleton().resource_types.register(cls.__restype)
@@ -45,34 +49,44 @@ class File(Resource):
     return os.path.isabs(path)
 
   @classmethod
-  def is_valid_contents(cls, contents):
-    # A byte string, no encoding
-    return isinstance(contents, str)
+  def read_contents(cls, id):
+    path = id.attributes['path']
+    with open(path) as f:
+      return f.read()
 
   @classmethod
   def is_valid_state(cls, state):
     return state in ('present', 'absent', )
 
   @classmethod
-  def is_valid_mode(cls, mode):
-    # Only allow the {u,g,o}{r,w,x} combinations
-    return mode == (mode & 0777)
-
-  def get_state(self):
+  def read_state(cls, id):
     """
     The state of the file: present or absent.
     """
 
+    path = id.attributes['path']
     # Broken symlinks still are 'present'
-    if os.path.lexists(self.attributes['path']):
+    if os.path.lexists(path):
       return 'present'
     else:
       return 'absent'
 
+  @classmethod
+  def is_valid_mode(cls, mode):
+    # Only allow the {u,g,o}{r,w,x} combinations
+    return mode == (mode & 0777)
+
+  @classmethod
+  def read_mode(cls, id):
+    path = id.attributes['path']
+    # May return invalid mode.
+    # I think it's ok; invalid modes may exist, we just don't set them.
+    return os.lstat(path).st_mode
+
   def realize(self):
     # Don't let files be accessible between creation and permission setting.
     os.umask(0077)
-    s0, s1 = self.get_state(), self.attributes['state']
+    s0, s1 = self.read_state(self.identity), self.attributes['state']
 
     if s1 == 'present':
       # create or update

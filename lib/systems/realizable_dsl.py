@@ -18,7 +18,7 @@ def ensure_resource(typename, context=global_context(), depends=(), **kwargs):
 
 def ref_resource(typename, context=global_context(), depends=(), **kwargs):
   t = Registry.get_singleton().resource_types.lookup(typename)
-  i = InstanceRef(type=t, valdict=kwargs)
+  i = InstanceRef(type=t, id_valdict=kwargs)
   return context.ensure_realizable(i, extra_deps=depends)
 
 def ensure_transition(typename, context=global_context(), depends=(), **kwargs):
@@ -28,7 +28,7 @@ def ensure_transition(typename, context=global_context(), depends=(), **kwargs):
 
 def ref_transition(typename, context=global_context(), depends=(), **kwargs):
   t = Registry.get_singleton().transition_types.lookup(typename)
-  i = InstanceRef(type=t, valdict=kwargs)
+  i = InstanceRef(type=t, id_valdict=kwargs)
   return context.ensure_realizable(i, extra_deps=depends)
 
 def ensure_anon(context=global_context(), depends=()):

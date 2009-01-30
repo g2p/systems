@@ -19,29 +19,17 @@ class PythonCode(Transition):
       AttrType('name',
         identifying=True),
       AttrType('function',
-        valid_condition=cls.is_valid_function),
+        pytype=types.FunctionType),
       # Positional arguments, a sequence
       AttrType('args',
         default_value=[],
-        valid_condition=cls.is_valid_args),
+        pytype=list),
       # Keyword arguments, a map
       AttrType('kargs',
         default_value={},
-        valid_condition=cls.is_valid_kargs),
+        pytype=dict),
       ])
     Registry.get_singleton().transition_types.register(cls.__type)
-
-  @classmethod
-  def is_valid_function(cls, function):
-    return isinstance(function, types.FunctionType)
-
-  @classmethod
-  def is_valid_args(cls, args):
-    return isinstance(args, list)
-
-  @classmethod
-  def is_valid_kargs(cls, kargs):
-    return isinstance(kargs, dict)
 
   def realize(self):
     f = self.attributes['function']

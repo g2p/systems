@@ -29,10 +29,10 @@ class User(Resource):
         default_value='present',
         valid_condition=cls.is_valid_state),
       AttrType('home',
-        default_to_none=True,
+        none_allowed=True,
         valid_condition=cls.is_valid_home),
       AttrType('shell',
-        default_to_none=True,
+        none_allowed=True,
         valid_condition=cls.is_valid_shell),
     ])
     Registry.get_singleton().resource_types.register(cls.__restype)

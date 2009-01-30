@@ -25,7 +25,7 @@ class AptitudePackage(Resource):
         identifying=True,
         valid_condition=cls.is_valid_pkgname),
       AttrType('version',
-        default_to_none=True,
+        none_allowed=True,
         valid_condition=cls.is_valid_version),
       AttrType('state',
         default_value='installed',

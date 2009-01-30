@@ -29,40 +29,40 @@ class Command(Transition):
       AttrType('cmdline',
         valid_condition=cls.is_valid_cmdline),
       AttrType('cmdline_input',
-        default_to_none=True,
-        valid_condition=cls.is_valid_input),
+        none_allowed=True,
+        # So we needn't bother with encodings
+        pytype=str),
       AttrType('unless',
-        default_to_none=True,
-        valid_condition=cls.is_valid_unless),
+        none_allowed=True,
+        valid_condition=cls.is_valid_cmdline),
       AttrType('username',
-        default_to_none=True,
-        valid_condition=cls.is_valid_username),
+        none_allowed=True,
+        pytype=str),
       AttrType('extra_env',
-        default_to_none=True,
+        none_allowed=True,
         valid_condition=cls.is_valid_extra_env),
     ])
     Registry.get_singleton().transition_types.register(cls.__restype)
 
   @classmethod
   def is_valid_cmdline(cls, cmdline):
-    return isinstance(cmdline, list)
+    if not isinstance(cmdline, list):
+      return False
+    for e in cmdline:
+      if not isinstance(e, str):
+        return False
+    return True
 
   @classmethod
   def is_valid_extra_env(cls, extra_env):
-    return extra_env is None or isinstance(extra_env, dict)
-
-  @classmethod
-  def is_valid_input(cls, input):
-    # So we needn't bother with encodings
-    return input is None or isinstance(input, str)
-
-  @classmethod
-  def is_valid_unless(cls, unless):
-    return unless is None or cls.is_valid_cmdline(unless)
-
-  @classmethod
-  def is_valid_username(cls, username):
-    return username is None or isinstance(username, str)
+    if not isinstance(extra_env, dict):
+      return False
+    for (k, v) in extra_env.iteritems():
+      if not isinstance(k, str):
+        return False
+      if not isinstance(v, str):
+        return False
+    return True
 
   @classmethod
   def env_with(cls, extra_env):
