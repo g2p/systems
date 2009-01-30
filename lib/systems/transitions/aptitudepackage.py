@@ -4,13 +4,13 @@ import os
 import subprocess
 
 from systems.collector import Collector
-from systems.realizable import Realizable, Resource
+from systems.realizable import Realizable, Transition
 from systems.registry import Registry
 from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )
 
-class AptitudePackage(Resource):
+class AptitudePackage(Transition):
   """
   A debian package, managed by aptitude
 
@@ -31,7 +31,7 @@ class AptitudePackage(Resource):
         default_value='installed',
         valid_condition=cls.is_valid_state),
     ])
-    Registry.get_singleton().resource_types.register(cls.__restype)
+    Registry.get_singleton().transition_types.register(cls.__restype)
 
   @classmethod
   def is_valid_pkgname(cls, name):
@@ -110,11 +110,11 @@ class AptitudePackageCollector(Collector):
   Group several aptitude package operations into one.
   """
 
-  def filter(self, resource):
-    return isinstance(resource, AptitudePackage)
+  def filter(self, transition):
+    return isinstance(transition, AptitudePackage)
 
-  def collect(self, resources):
-    return AptitudePackages(resources)
+  def collect(self, transitions):
+    return AptitudePackages(transitions)
 
   @classmethod
   def register(cls):

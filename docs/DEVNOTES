@@ -8,9 +8,9 @@ See my tomboy notes on puppet semantics, and more correct semantics
 
 == Implementation
 
-=== Resource collectors
+=== Transition collectors
 
-Resource collectors, a way to realize resources together.
+Transition collectors, a way to realize transitions together.
 Could be used to realize all package constraints in one aptitude call.
 Detects incompatible constraints, and is faster.
 

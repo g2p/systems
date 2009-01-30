@@ -6,12 +6,12 @@ import re
 import subprocess
 
 from systems.registry import Registry
-from systems.realizable import Resource
+from systems.realizable import Transition
 from systems.typesystem import Type, AttrType
 
 __all__ = ('register', )
 
-class User(Resource):
+class User(Transition):
   """
   A system user managed on the local system (/etc/password and friends)
 
@@ -38,7 +38,7 @@ class User(Resource):
         reader=cls.read_shell,
         valid_condition=cls.is_valid_shell),
     ])
-    Registry.get_singleton().resource_types.register(cls.__restype)
+    Registry.get_singleton().transition_types.register(cls.__restype)
 
   @classmethod
   def is_valid_username(cls, name):

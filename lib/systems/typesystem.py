@@ -53,7 +53,7 @@ class AttrType(object):
   @property
   def identifying(self):
     """
-    Identifying attributes can be used to recall a defined resource.
+    Identifying attributes can be used to recall a defined instance.
     """
 
     return self.__identifying
@@ -161,8 +161,8 @@ class Type(object):
   There are two kinds of attributes:
   * identifying attributes, which together determine
   the identity of the instance.
-  Two resources differing on any of the identifying attributes are distinct.
-  * other attributes, which specify a state of the identified resource.
+  Two instances differing on any of the identifying attributes are distinct.
+  * other attributes, which specify a state of the identified instance.
   """
 
   def __init__(self, name, cls, attrs):
@@ -232,8 +232,6 @@ class Type(object):
     Does not check validity of valdict.
     """
 
-    # We should also add the type "category",
-    # which is resource or transition.
     id_valdict = dict((k, valdict[k]) for k in self.__id_attr_dict)
     return Identity(self, id_valdict)
 
@@ -249,10 +247,6 @@ class _TypedBase(object):
 
   @property
   def type(self):
-    """
-    The resource type, a Type.
-    """
-
     return self.__type
 
 class ReadAttributes(object):

@@ -3,7 +3,7 @@
 import re
 
 from systems.realizable_dsl import \
-    ensure_resource, ensure_transition, ref_transition
+    ensure_transition, ref_transition
 from systems.util.templates import build_and_render
 
 class Cluster(object):
@@ -30,7 +30,7 @@ class Cluster(object):
         }
 
   def ensure_package(self, context):
-    return ensure_resource('AptitudePackage',
+    return ensure_transition('AptitudePackage',
         context=context, name='postgresql')
 
   def ensure_command(self, context, **kwargs):
@@ -114,7 +114,7 @@ class Cluster(object):
     '''
     code = build_and_render(template, db=db)
 
-    cron_trans = ensure_resource('File', context,
+    cron_trans = ensure_transition('File', context,
         path=fname,
         mode=0700,
         contents=code.encode('utf8'), )

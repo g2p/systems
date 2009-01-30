@@ -86,7 +86,7 @@ class Context(Realizable):
     Add a dependency relationship (realization ordering constraint).
 
     realizable and dependency are realizables
-    (resources, transitions or references),
+    (this includes stuff like references),
     and must already have been added with add_realizable.
     """
 

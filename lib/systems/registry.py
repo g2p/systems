@@ -23,7 +23,7 @@ class RegistryDict(object):
 
 class Registry(object):
   """
-  A registry for resource types.
+  A registry for various types and things.
   """
 
   def __new__(cls):
@@ -42,13 +42,8 @@ class Registry(object):
     return getattr(cls, '_singleton')
 
   def __init__(self):
-    self.__resource_types = RegistryDict()
     self.__transition_types = RegistryDict()
     self.__collectors = RegistryDict()
-
-  @property
-  def resource_types(self):
-    return self.__resource_types
 
   @property
   def transition_types(self):

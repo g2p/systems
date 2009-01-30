@@ -3,8 +3,7 @@
 from systems.typesystem import InstanceBase
 
 __all__ = (
-    'Realizable', 'TypedRealizable', 'EmptyRealizable',
-    'Resource', 'Transition',
+    'Realizable', 'EmptyRealizable', 'Transition',
     )
 
 
@@ -29,27 +28,8 @@ class EmptyRealizable(Realizable):
   def realize(self):
     pass
 
-class TypedRealizable(InstanceBase, Realizable):
-  pass
 
-
-class Resource(TypedRealizable):
-  """
-  A resource, representing a state of some part of the system.
-
-  A resource has an identity that is common to all possible states.
-  """
-
-  pass
-
-
-class TransitionBase(TypedRealizable):
-  pass
-
-class IdempotentTransition(TransitionBase):
-  pass
-
-class Transition(TransitionBase):
+class Transition(InstanceBase, Realizable):
   """
   A transition, representing an action on some part of the system.
   """

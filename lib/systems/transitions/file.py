@@ -6,13 +6,13 @@ import os
 import stat
 
 from systems.registry import Registry
-from systems.realizable import Resource
+from systems.realizable import Transition
 from systems.typesystem import Type, AttrType
 from systems.util.syscalls import fchmod
 
 __all__ = ('register', )
 
-class File(Resource):
+class File(Transition):
   """
   A file in the filesystem.
   """
@@ -39,7 +39,7 @@ class File(Resource):
         reader=cls.read_mode,
         valid_condition=cls.is_valid_mode),
     ])
-    Registry.get_singleton().resource_types.register(cls.__restype)
+    Registry.get_singleton().transition_types.register(cls.__restype)
 
   @classmethod
   def is_valid_path(cls, path):
