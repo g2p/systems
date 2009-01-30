@@ -27,12 +27,15 @@ class User(Resource):
         valid_condition=cls.is_valid_username),
       AttrType('state',
         default_value='present',
+        reader=cls.read_state,
         valid_condition=cls.is_valid_state),
       AttrType('home',
         none_allowed=True,
+        reader=cls.read_home,
         valid_condition=cls.is_valid_home),
       AttrType('shell',
         none_allowed=True,
+        reader=cls.read_shell,
         valid_condition=cls.is_valid_shell),
     ])
     Registry.get_singleton().resource_types.register(cls.__restype)
@@ -54,8 +57,9 @@ class User(Resource):
   def is_valid_shell(cls, shell):
     return shell is None or bool(re.match('^/[/a-z0-9_-]*$', shell))
 
-  def read_state(self):
-    name = self.attributes['name']
+  @classmethod
+  def read(self, id):
+    name = id.attributes['name']
     try:
       p = pwd.getpwnam(name)
     except KeyError:
@@ -73,8 +77,20 @@ class User(Resource):
         'shell': shell,
         }
 
+  @classmethod
+  def read_state(cls, id):
+    return cls.read(id)['state']
+
+  @classmethod
+  def read_home(cls, id):
+    return cls.read(id)['home']
+
+  @classmethod
+  def read_shell(cls, id):
+    return cls.read(id)['shell']
+
   def realize(self):
-    state0 = self.read_state()
+    state0 = self.read(self.identity)
     state1 = self.attributes
     if state0 == state1:
       return

@@ -43,18 +43,17 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   ensure_resource('AptitudePackage',
       name='gitosis')
 
-  ensure_resource('User',
+  user = ensure_resource('User',
       name=user_name, home=user_home, shell='/bin/sh')
 
   with open(pub_file) as f:
     pub_file_s = f.read()
-  # Can't rely on user= without also changing HOME.
-  # Prefer sudo -H then. The alternative is to read a pwd entry.
+
   ensure_transition('Command',
       name='setup-gitosis',
-      cmdline=[
-        '/usr/bin/sudo', '-H', '-u', user_name,
-        '/usr/bin/gitosis-init'],
+      username=user_name,
+      extra_env={'HOME': user_home, },
+      cmdline=['/usr/bin/gitosis-init', ],
       cmdline_input=pub_file_s,
       unless=[
         '/usr/bin/test', '-f', user_home+'/.gitosis.conf'],
