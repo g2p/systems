@@ -34,6 +34,15 @@ class Transition(InstanceBase, Realizable):
   A transition, representing an action on some part of the system.
   """
 
-  pass
+  def ensure_extra_deps(self, context):
+    """
+    Ensure any computed dependencies are present in context.
+
+    Useful for dependencies that are automatically present,
+    possibly set by parameters.
+    """
+
+    pass
+
 
 

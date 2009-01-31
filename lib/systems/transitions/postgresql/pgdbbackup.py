@@ -22,6 +22,9 @@ def is_valid_state(state):
   return state in ('present', 'absent', )
 
 class PgDbBackup(Transition):
+  def ensure_extra_deps(self, context):
+    context.ensure_dependency(self, self.attributes['database'])
+
   def realize(self):
     dbname = self.attributes['database'].attributes['name']
     state = self.attributes['state']
@@ -46,7 +49,6 @@ class PgDbBackup(Transition):
 def register():
   restype = Type('PgDbBackup', PgDbBackup,
     [
-    # XXX We need to auto-create a dependency to this attribute
     AttrType('database',
       identifying=True,
       pytype=PgDatabase,

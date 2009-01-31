@@ -41,6 +41,9 @@ def drop_db_trans(id):
         ], )
 
 class PgDatabase(Transition):
+  def ensure_extra_deps(self, context):
+    context.ensure_dependency(self, self.attributes['user'])
+
   def realize(self):
     # Can't read yet, so force it.
     if self.attributes['state'] == 'present':
@@ -52,7 +55,6 @@ class PgDatabase(Transition):
 def register():
   restype = Type('PgDatabase', PgDatabase,
     [
-    # XXX We need to auto-create a dependency to this attribute
     AttrType('user',
       identifying=True,
       pytype=PgUser),

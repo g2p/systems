@@ -26,17 +26,22 @@ class PgCluster(Transition):
   note those are not strictly a hostname or a port number.
   """
 
-  def realize(self):
+  def ensure_extra_deps(self, context):
     # XXX Package is a coarser granuality than cluster.
     state = self.attributes['state']
-    pkg_state = {'present': 'installed', 'absent': 'purged', }[state]
-    return transition('AptitudePackage', name='postgresql')
+    pkg_state = { 'present': 'installed', 'absent': 'purged', }[state]
+    pkg_trans = transition('AptitudePackage', name='postgresql')
+    context.ensure_realizable(pkg_trans)
+    context.ensure_dependency(self, pkg_trans)
+
+  def realize(self):
+    # Everything already done as extra deps.
+    pass
 
   def command_trans(self, **kwargs):
     e = kwargs.get('extra_env', {})
     e.update(extra_env(self.identity))
     kwargs['extra_env'] = e
-    # XXX Depends on package_trans
     return transition('Command', **kwargs)
 
   def privileged_command_trans(self, **kwargs):

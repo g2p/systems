@@ -37,6 +37,9 @@ def drop_user_trans(id):
         ], )
 
 class PgUser(Transition):
+  def ensure_extra_deps(self, context):
+    context.ensure_dependency(self, self.attributes['cluster'])
+
   def realize(self):
     # Can't read yet, so force it.
     if self.attributes['state'] == 'present':

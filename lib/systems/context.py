@@ -3,7 +3,7 @@
 import networkx as NX
 
 from systems.typesystem import InstanceBase, InstanceRef
-from systems.realizable import Realizable, EmptyRealizable
+from systems.realizable import Realizable, EmptyRealizable, Transition
 from systems.registry import Registry
 
 __all__ = ('Context', 'global_context', )
@@ -36,7 +36,7 @@ class Context(Realizable):
     if self.__state != state:
       raise RuntimeError(u'Context state should be «%s»' % state)
 
-  def ensure_realizable(self, r, extra_deps):
+  def ensure_realizable(self, r, extra_deps=()):
     """
     Add a realizable or realizable reference to be managed by this graph.
     """
@@ -62,12 +62,17 @@ class Context(Realizable):
 
     for extra_dep in extra_deps:
       self.ensure_realizable(extra_dep, ())
-      self.add_dependency(r, extra_dep)
-    self.add_dependency(r, self.__first)
-    self.add_dependency(self.__last, r)
+      self.ensure_dependency(r, extra_dep)
+    self.ensure_dependency(r, self.__first)
+    self.ensure_dependency(self.__last, r)
+
+    if isinstance(r, Transition):
+      # Calls back to ensure_realizable and ensure_dependency
+      r.ensure_extra_deps(self)
+
     return r
 
-  def require_valid_realizable(self, r):
+  def _require_valid_realizable(self, r):
     if isinstance(r, InstanceRef):
       if r.identity in self.__ref_set:
         return
@@ -81,18 +86,20 @@ class Context(Realizable):
       raise TypeError
     raise RuntimeError('No such realizable in contest: «%s»' % r)
 
-  def add_dependency(self, dependent, dependency):
+  def ensure_dependency(self, dependent, dependency):
     """
     Add a dependency relationship (realization ordering constraint).
 
-    realizable and dependency are realizables
+    Beware: dependent is passed first!
+
+    dependent and dependency are realizables
     (this includes stuff like references),
-    and must already have been added with add_realizable.
+    and must already have been added with ensure_realizable.
     """
 
     self.require_state('init')
-    self.require_valid_realizable(dependent)
-    self.require_valid_realizable(dependency)
+    self._require_valid_realizable(dependent)
+    self._require_valid_realizable(dependency)
     self.__deps_graph.add_edge(dependency, dependent)
 
   def ensure_frozen(self):
