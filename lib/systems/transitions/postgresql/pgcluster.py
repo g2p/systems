@@ -1,8 +1,24 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
+from systems.registry import Registry
+from systems.realizable import Transition
 from systems.realizable_dsl import transition
+from systems.typesystem import Type, AttrType
 
-class PgCluster(object):
+
+def is_valid_state(state):
+  return state in ('present', 'absent', )
+
+def extra_env(identity):
+  pg_host = identity.attributes['pg_host']
+  pg_port = identity.attributes['pg_port']
+  return {
+      'PGHOST': pg_host,
+      'PGPORT': str(pg_port),
+      }
+
+
+class PgCluster(Transition):
   """
   A postgresql database cluster.
 
@@ -10,30 +26,17 @@ class PgCluster(object):
   note those are not strictly a hostname or a port number.
   """
 
-  # Consider conninfo strings; problem is createuser doesn't support them.
-  # Also they do a bit too much.
-
-  def __init__(self, pg_host='/var/run/postgresql', pg_port=5432):
-    self.pg_host = pg_host
-    self.pg_port = pg_port
-
-  def extra_env(self):
-    return {
-        'PGHOST': self.pg_host,
-        'PGPORT': str(self.pg_port),
-        }
-
-  def package_trans(self):
+  def realize(self):
+    # XXX Not fine grained.
     return transition('AptitudePackage',
         name='postgresql')
 
   def command_trans(self, **kwargs):
     e = kwargs.get('extra_env', {})
-    e.update(self.extra_env())
+    e.update(extra_env(self.identity))
     kwargs['extra_env'] = e
     # XXX Depends on package_trans
-    return transition('Command',
-        **kwargs)
+    return transition('Command', **kwargs)
 
   def privileged_command_trans(self, **kwargs):
     if 'username' in kwargs:
@@ -52,5 +55,23 @@ class PgCluster(object):
         cmdline=['/usr/bin/psql', '-At1', '-f', '-', ], cmdline_input=sql)
 
 def register():
-  pass
+  # Consider conninfo strings; problem is createuser doesn't support them.
+  # However, they do a bit too much (spec the db…) and wouldn't be identifying.
+
+  restype = Type('PgCluster', PgCluster,
+    [
+    AttrType('pg_host',
+      identifying=True,
+      default_value='/var/run/postgresql',
+      pytype=str),
+    AttrType('pg_port',
+      identifying=True,
+      default_value=5432,
+      pytype=int),
+    AttrType('state',
+      default_value='present',
+      valid_condition=is_valid_state),
+  ])
+  Registry.get_singleton().transition_types.register(restype)
+
 

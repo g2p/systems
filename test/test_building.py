@@ -8,7 +8,6 @@ import systems.transitions
 from systems.util.templates import build_and_render
 from systems.realizable_dsl import \
     ensure_transition, ref_transition, ensure_anon
-from systems.transitions.postgresql.pgcluster import PgCluster
 
 systems.transitions.register()
 gc = systems.context.global_context()
@@ -58,7 +57,7 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
         ref_transition('User', name=user_name)])
 test_gitosis('g2p-moulinex.pub')
 
-c = PgCluster()
+c = ensure_transition('PgCluster')
 u = ensure_transition('PgUser', cluster=c, name='user-pfuuit')
 d = ensure_transition('PgDatabase', user=u, name='db-pfuuit')
 b = ensure_transition('PgDbBackup', database=d)
