@@ -7,6 +7,8 @@ def register():
   command.register()
   import file
   file.register()
+  import postgresql
+  postgresql.register()
   import pythoncode
   pythoncode.register()
   import user
