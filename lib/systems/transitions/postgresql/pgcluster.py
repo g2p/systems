@@ -27,9 +27,10 @@ class PgCluster(Transition):
   """
 
   def realize(self):
-    # XXX Not fine grained.
-    return transition('AptitudePackage',
-        name='postgresql')
+    # XXX Package is a coarser granuality than cluster.
+    state = self.attributes['state']
+    pkg_state = {'present': 'installed', 'absent': 'purged', }[state]
+    return transition('AptitudePackage', name='postgresql')
 
   def command_trans(self, **kwargs):
     e = kwargs.get('extra_env', {})
