@@ -41,30 +41,31 @@ gc.ensure_resource(u)
 gc.ensure_resource(d)
 gc.ensure_resource(b)
 
-gc.realize()
-sys.exit(0)
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
-  ensure_transition('AptitudePackage',
-      name='gitosis')
+  pkg = resource('AptitudePackage', name='gitosis')
 
-  user = ensure_transition('User',
+  user = resource('User',
       name=user_name, home=user_home, shell='/bin/sh')
 
   with open(pub_file) as f:
     pub_file_s = f.read()
 
-  ensure_transition('Command',
-      name='setup-gitosis',
+  cmd = transition('Command',
       username=user_name,
       extra_env={'HOME': user_home, },
       cmdline=['/usr/bin/gitosis-init', ],
       cmdline_input=pub_file_s,
       unless=[
         '/usr/bin/test', '-f', user_home+'/.gitosis.conf'],
-      depends=[
-        ref_transition('AptitudePackage', name='gitosis'),
-        ref_transition('User', name=user_name)])
+      )
+  # XXX Need mixed resource/transition depends.
+  # Maybe put sentinels to represent resources in the transition graph,
+  # and put all depends in this graph.
+  gc.ensure_resource(pkg)
+  gc.ensure_resource(user)
+  gc.ensure_transition(cmd)
 test_gitosis('g2p-moulinex.pub')
 
+gc.realize()
 
