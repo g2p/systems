@@ -46,11 +46,10 @@ class Collector(Named):
 class Aggregate(object):
   """
   Apes Resource somewhat.
-  """
 
-  def place_extra_deps(self, resource_graph):
-    # Do not override this! Danger!
-    pass
+  place_extra_deps will not be called due to a sane stage system,
+  override place_transitions.
+  """
 
   def place_transitions(self, transition_graph):
     # Override this.
