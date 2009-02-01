@@ -1,24 +1,23 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
+from systems.dsl import resource, transition
 from systems.registry import Registry
-from systems.realizable import Transition
-from systems.realizable_dsl import transition
-from systems.typesystem import Type, AttrType
+from systems.typesystem import AttrType, ResourceType, Resource, Attrs
 
 
 def is_valid_state(state):
   return state in ('present', 'absent', )
 
-def extra_env(identity):
-  pg_host = identity.attributes['pg_host']
-  pg_port = identity.attributes['pg_port']
+def extra_env(id_attrs):
+  pg_host = id_attrs['pg_host']
+  pg_port = id_attrs['pg_port']
   return {
       'PGHOST': pg_host,
       'PGPORT': str(pg_port),
       }
 
 
-class PgCluster(Transition):
+class PgCluster(Resource):
   """
   A postgresql database cluster.
 
@@ -26,21 +25,17 @@ class PgCluster(Transition):
   note those are not strictly a hostname or a port number.
   """
 
-  def ensure_extra_deps(self, context):
+  def place_transitions(self, transition_graph):
     # XXX Package is a coarser granuality than cluster.
-    state = self.attributes['state']
+    state = self.wanted_attrs['state']
     pkg_state = { 'present': 'installed', 'absent': 'purged', }[state]
-    pkg_trans = transition('AptitudePackage', name='postgresql')
-    context.ensure_realizable(pkg_trans)
-    context.ensure_dependency(self, pkg_trans)
-
-  def realize(self):
-    # Everything already done as extra deps.
-    pass
+    pkg_trans = resource('AptitudePackage', name='postgresql')
+    # place_extra_deps would also work in this case
+    return pkg_trans.place_transitions(transition_graph)
 
   def command_trans(self, **kwargs):
     e = kwargs.get('extra_env', {})
-    e.update(extra_env(self.identity))
+    e.update(extra_env(self.id_attrs))
     kwargs['extra_env'] = e
     return transition('Command', **kwargs)
 
@@ -60,24 +55,25 @@ class PgCluster(Transition):
     return self.command_trans(
         cmdline=['/usr/bin/psql', '-At1', '-f', '-', ], cmdline_input=sql)
 
+
 def register():
   # Consider conninfo strings; problem is createuser doesn't support them.
   # However, they do a bit too much (spec the db…) and wouldn't be identifying.
 
-  restype = Type('PgCluster', PgCluster,
-    [
-    AttrType('pg_host',
-      identifying=True,
-      default_value='/var/run/postgresql',
-      pytype=str),
-    AttrType('pg_port',
-      identifying=True,
-      default_value=5432,
-      pytype=int),
-    AttrType('state',
-      default_value='present',
-      valid_condition=is_valid_state),
-  ])
-  Registry.get_singleton().transition_types.register(restype)
+  restype = ResourceType('PgCluster', PgCluster,
+    id_type={
+      'pg_host': AttrType(
+        default_value='/var/run/postgresql',
+        pytype=str),
+      'pg_port': AttrType(
+        default_value=5432,
+        pytype=int),
+      },
+    state_type={
+      'state': AttrType(
+        default_value='present',
+        valid_condition=is_valid_state),
+      })
+  Registry.get_singleton().resource_types.register(restype)
 
 

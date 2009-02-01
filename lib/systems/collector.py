@@ -1,6 +1,9 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
-class Collector(object):
+from systems.util.datatypes import Named
+
+
+class Collector(Named):
   """
   Groups several transitions into one.
 
@@ -10,11 +13,7 @@ class Collector(object):
   """
 
   def __init__(self, name):
-    self.__name = name
-
-  @property
-  def name(self):
-    return self.__name
+    Named.__init__(self, name)
 
   def partition(self, realizables):
     """

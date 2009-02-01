@@ -1,38 +1,48 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
-
 from __future__ import with_statement
 import sys
 
 import systems.context
 import systems.transitions
+from systems.dsl import resource, transition
 from systems.util.templates import build_and_render
-from systems.realizable_dsl import \
-    ensure_transition, ref_transition, ensure_anon
 
-systems.transitions.register()
 gc = systems.context.global_context()
+systems.transitions.register()
 
-ensure_transition('Command',
-    name='foo', cmdline=['/bin/echo', 'Chatty command is chatty'])
-
-ensure_transition('PythonCode', name='fariboles',
+t1 = transition('Command',
+    cmdline=['/bin/echo', 'Chatty command is chatty'])
+t2 = transition('PythonCode',
     function=lambda: sys.stderr.write('Fariboles!\n'))
 
-ensure_transition('File',
+gc.ensure_transition(t1)
+gc.ensure_transition(t2)
+
+text = build_and_render('Hello {{ name }}!\n', name='Jane Doe')
+f = resource('File',
     path='/tmp/testfile',
     mode=0644,
-    contents=build_and_render(
-      'Hello {{ name }}!\n',
-      name='Jane Doe') \
-          .encode('utf8'))
-
-r1 = ensure_transition('AptitudePackage',
-    name='python-networkx')
-
-r2 = ensure_transition('User',
+    contents=text.encode('utf8'))
+p = resource('AptitudePackage', name='python-networkx')
+u = resource('User',
     name='zorglub', state='absent', shell='/bin/true')
 
-ensure_anon(depends=(r1, r2))
+gc.ensure_resource(p)
+gc.ensure_resource(f)
+gc.ensure_resource(u)
+
+c = resource('PgCluster')
+u = resource('PgUser', cluster=c, name='user-pfuuit')
+d = resource('PgDatabase', user=u, name='db-pfuuit')
+b = resource('PgDbBackup', database=d)
+
+gc.ensure_resource(c)
+gc.ensure_resource(u)
+gc.ensure_resource(d)
+gc.ensure_resource(b)
+
+gc.realize()
+sys.exit(0)
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   ensure_transition('AptitudePackage',
@@ -57,10 +67,4 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
         ref_transition('User', name=user_name)])
 test_gitosis('g2p-moulinex.pub')
 
-c = ensure_transition('PgCluster')
-u = ensure_transition('PgUser', cluster=c, name='user-pfuuit')
-d = ensure_transition('PgDatabase', user=u, name='db-pfuuit')
-b = ensure_transition('PgDbBackup', database=d)
-
-gc.realize()
 

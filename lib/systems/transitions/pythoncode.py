@@ -2,8 +2,7 @@
 import types
 
 from systems.registry import Registry
-from systems.realizable import Transition
-from systems.typesystem import Type, AttrType
+from systems.typesystem import AttrType, TransitionType, Transition
 
 __all__ = ('register', )
 
@@ -14,27 +13,27 @@ class PythonCode(Transition):
 
   @classmethod
   def register(cls):
-    cls.__type = Type('PythonCode', cls,
-      [
-      AttrType('name',
-        identifying=True),
-      AttrType('function',
-        pytype=types.FunctionType),
-      # Positional arguments, a sequence
-      AttrType('args',
-        default_value=[],
-        pytype=list),
-      # Keyword arguments, a map
-      AttrType('kargs',
-        default_value={},
-        pytype=dict),
-      ])
+    cls.__type = TransitionType('PythonCode', cls,
+        instr_type={
+          'function': AttrType(
+            pytype=(types.FunctionType, types.MethodType)),
+          # Positional arguments, a sequence
+          'args': AttrType(
+            default_value=[],
+            pytype=list),
+          # Keyword arguments, a map
+          'kargs': AttrType(
+            default_value={},
+            pytype=dict),
+          },
+        results_type={
+          })
     Registry.get_singleton().transition_types.register(cls.__type)
 
   def realize(self):
-    f = self.attributes['function']
-    a = self.attributes['args']
-    k = self.attributes['kargs']
+    f = self.instr_attrs['function']
+    a = self.instr_attrs['args']
+    k = self.instr_attrs['kargs']
     f(*a, **k)
 
 def register():

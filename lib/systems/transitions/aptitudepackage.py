@@ -4,13 +4,13 @@ import os
 import subprocess
 
 from systems.collector import Collector
-from systems.realizable import Realizable, Transition
 from systems.registry import Registry
-from systems.typesystem import Type, AttrType
+from systems.typesystem import AttrType, ResourceType, Resource
+from systems.dsl import transition
 
 __all__ = ('register', )
 
-class AptitudePackage(Transition):
+class AptitudePackage(Resource):
   """
   A debian package, managed by aptitude
 
@@ -19,19 +19,21 @@ class AptitudePackage(Transition):
 
   @classmethod
   def register(cls):
-    cls.__restype = Type('AptitudePackage', cls,
-      [
-      AttrType('name',
-        identifying=True,
-        valid_condition=cls.is_valid_pkgname),
-      AttrType('version',
-        none_allowed=True,
-        valid_condition=cls.is_valid_version),
-      AttrType('state',
-        default_value='installed',
-        valid_condition=cls.is_valid_state),
-    ])
-    Registry.get_singleton().transition_types.register(cls.__restype)
+    cls.__restype = ResourceType('AptitudePackage', cls,
+        id_type={
+          'name': AttrType(
+            valid_condition=cls.is_valid_pkgname),
+          },
+        state_type={
+          'version': AttrType(
+            none_allowed=True,
+            valid_condition=cls.is_valid_version),
+          'state': AttrType(
+            default_value='installed',
+            valid_condition=cls.is_valid_state),
+          },
+        )
+    Registry.get_singleton().resource_types.register(cls.__restype)
 
   @classmethod
   def is_valid_pkgname(cls, name):
@@ -63,23 +65,20 @@ class AptitudePackage(Transition):
     Documented in aptitude(8).
     """
 
-    state = self.attributes['state']
-    r = '%(name)s' % self.attributes
+    state = self.wanted_attrs['state']
+    r = '%(name)s' % self.id_attrs
     if state in ('installed', 'held', ) \
-      and self.attributes['version'] is not None:
+      and self.wanted_attrs['version'] is not None:
         r += '=%(version)s' % self.attributes
     r += {'installed': '+', 'purged': '_',
         'uninstalled': '-', 'held': '=', }[state]
     return r
 
-  def realize(self):
-    """
-    Install the package.
-    """
+  def place_transitions(self, transition_graph):
+    return AptitudePackages([self]).place_transitions(transition_graph)
 
-    AptitudePackages([self]).realize()
 
-class AptitudePackages(Realizable):
+class AptitudePackages(object):
   def __init__(self, packages):
     self.__packages = packages
 
@@ -92,18 +91,15 @@ class AptitudePackages(Realizable):
 
     return [p.to_aptitude_string() for p in self.__packages]
 
-  def realize(self):
-    """
-    Install the packages.
+  def place_transitions(self, transition_graph):
+    cmdline=['/usr/bin/aptitude', 'install', '-y', '--', ]
+    cmdline.extend(self.to_aptitude_list())
+    cmd = transition('Command',
+        extra_env={ 'DEBIAN_FRONTEND': 'noninteractive', },
+        cmdline=cmdline)
+    transition_graph.add_transition(cmd)
+    return cmd
 
-    Throws in case of failure.
-    """
-
-    env2 = dict(os.environ)
-    env2['DEBIAN_FRONTEND'] = 'noninteractive'
-    cmd = ['/usr/bin/aptitude', 'install', '-y', '--', ]
-    cmd.extend(self.to_aptitude_list())
-    subprocess.check_call(cmd, env=env2)
 
 class AptitudePackageCollector(Collector):
   """

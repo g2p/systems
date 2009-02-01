@@ -1,8 +1,6 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
-from systems.util.datatypes import ImmutableDict
-
-__all__ = ('AttrType', 'Type', 'InstanceBase', 'InstanceRef', )
+from systems.util.datatypes import ImmutableDict, Named
 
 
 class AttrType(object):
@@ -14,7 +12,6 @@ class AttrType(object):
   """
 
   def __init__(self,
-      name, identifying=False,
       none_allowed=False, default_value=None,
       valid_condition=None, pytype=None,
       reader=None):
@@ -34,29 +31,11 @@ class AttrType(object):
 
     if none_allowed and default_value is not None:
       raise ValueError("Can't set both none_allowed and default_value")
-    self.__name = name
-    self.__identifying = identifying
     self.__none_allowed = none_allowed
     self.__default_value = default_value
     self.__valid_condition = valid_condition
     self.__pytype = pytype
     self.__reader = reader
-
-  @property
-  def name(self):
-    """
-    Name of the attribute.
-    """
-
-    return self.__name
-
-  @property
-  def identifying(self):
-    """
-    Identifying attributes can be used to recall a defined instance.
-    """
-
-    return self.__identifying
 
   @property
   def default_value(self):
@@ -111,7 +90,6 @@ class AttrType(object):
 
     return True
 
-
   def read_value(self, id):
     """
     Read the current state.
@@ -120,17 +98,124 @@ class AttrType(object):
     return self.__reader(id)
 
 
-class Identity(object):
+class SimpleType(object):
   """
-  The identity of an instance or a reference.
+  A simple type, mapping names to AttrTypes.
   """
 
-  def __init__(self, type, id_valdict):
-    self.__type = type
-    self.__id_valdict = id_valdict
+  def __init__(self, atypes):
+    """
+    Define a type.
+
+    Takes name, a name for the type, and attrs, an iterable of attributes.
+    """
+
+    self.__atypes = ImmutableDict(atypes)
+
+  def prepare_valdict(self, valdict):
+    """
+    Validates the valdict, adding default values explicitly.
+    """
+
+    for k in valdict:
+      if k not in self.atypes:
+        raise KeyError(u'Invalid attribute «%s»' % k)
+
+    for (n, a) in self.atypes.iteritems():
+      if not n in valdict:
+        if a.has_default_value:
+          valdict[n] = a.default_value
+        else:
+          raise KeyError(u'Attribute «%s» is unset' % n)
+      if not a.is_valid_value(valdict[n]):
+        raise ValueError(u'Incorrect value for attribute «%s»: «%s»' %
+            (n, valdict[n]))
+    return valdict
+
+  @property
+  def atypes(self):
+    return self.__atypes
+
+
+class ResourceType(Named):
+  def __init__(self, name, instance_class, id_type, state_type):
+    if not issubclass(instance_class, Resource):
+      raise TypeError
+    Named.__init__(self, name)
+    self.__instance_class = instance_class
+    require_disjoint(id_type, state_type)
+    self.__id_type = SimpleType(id_type)
+    self.__state_type = SimpleType(state_type)
+
+  @property
+  def id_type(self):
+    return self.__id_type
+
+  @property
+  def state_type(self):
+    return self.__state_type
+
+  def make_instance(self, valdict):
+    id_valdict = dict((k, v)
+        for (k, v) in valdict.iteritems()
+        if k in self.__id_type.atypes)
+    wanted_valdict = dict((k, v)
+        for (k, v) in valdict.iteritems()
+        if k in self.__state_type.atypes)
+    errs = list(k
+        for k in valdict
+        if k not in self.__id_type.atypes
+        and k not in self.__state_type.atypes)
+    if len(errs) != 0:
+      raise ValueError
+    return self.__instance_class(self, id_valdict, wanted_valdict)
+
+  def make_ref(self, **id_valdict):
+    return ResourceRef(self, id_valdict)
+
+
+def require_disjoint(d1, d2):
+  s1 = set(d1.keys())
+  s2 = set(d2.keys())
+  if len(s1.intersection(s2)) != 0:
+    raise ValueError(s1, s2)
+
+class TransitionType(Named):
+  def __init__(self, name, instance_class, instr_type, results_type):
+    if not issubclass(instance_class, Transition):
+      raise TypeError
+    Named.__init__(self, name)
+    self.__instance_class = instance_class
+    require_disjoint(instr_type, results_type)
+    self.__instructions_type = SimpleType(instr_type)
+    self.__results_type = SimpleType(results_type)
+
+  @property
+  def instr_type(self):
+    return self.__instructions_type
+
+  @property
+  def results_type(self):
+    return self.__results_type
+
+  def make_instance(self, instr_valdict):
+    return self.__instance_class(self, instr_valdict)
+
+
+class Attrs(object):
+  """
+  A typed set of attribute values.
+  """
+
+  def __init__(self, stype, valdict):
+    if not isinstance(stype, SimpleType):
+      raise TypeError
+    self.__stype = stype
+    self.__valdict = stype.prepare_valdict(valdict)
 
   def _key(self):
-    return (self.__type.name, frozenset(self.__id_valdict.iteritems()))
+    # XXX In the "identify" use case, we need to name the type.
+    return (self.__stype, frozenset(self.__valdict.iteritems()))
 
   def __hash__(self):
     return hash(self._key())
@@ -141,191 +226,104 @@ class Identity(object):
       return 0
     return cmp(k0, k1)
 
-  @property
-  def type(self):
-    return self.__type
-
-  @property
-  def attributes(self):
-    """
-    Read attribute values.
-    """
-
-    return ImmutableDict(self.__id_valdict)
-
-class Type(object):
-  """
-  A type.
-
-  Specifies what attributes must be set.
-  There are two kinds of attributes:
-  * identifying attributes, which together determine
-  the identity of the instance.
-  Two instances differing on any of the identifying attributes are distinct.
-  * other attributes, which specify a state of the identified instance.
-  """
-
-  def __init__(self, name, cls, attrs):
-    """
-    Define a type.
-
-    Takes name, a name for the type, and attrs, an iterable of attributes.
-    """
-
-    self.__name = name
-    self.__cls = cls
-    self.__attr_dict = {}
-    self.__id_attr_dict = {}
-
-    for attr in attrs:
-      if attr.name in self.__attr_dict:
-        raise ValueErrors('Cannot have two attributes with the same name')
-
-      self.__attr_dict[attr.name] = attr
-      if attr.identifying:
-        self.__id_attr_dict[attr.name] = attr
-
-  @property
-  def name(self):
-    return self.__name
-
-  def make_instance(self, valdict):
-    return self.__cls(type=self, valdict=valdict)
-
-  @classmethod
-  def _prepare_valdict(cls, attrs, valdict):
-    for k in valdict:
-      if k not in attrs:
-        raise KeyError(u'Invalid attribute «%s»' % k)
-
-    for a in attrs.itervalues():
-      if not a.name in valdict:
-        if a.has_default_value:
-          valdict[a.name] = a.default_value
-        else:
-          raise KeyError(u'Attribute «%s» is unset' % a.name)
-      if not a.is_valid_value(valdict[a.name]):
-        raise ValueError(u'Incorrect value for attribute «%s»: «%s»' %
-            (a.name, valdict[a.name]))
-
-  def attr_lookup(self, attrname):
-    return self.__attr_dict[attrname]
-
-  def prepare_valdict(self, valdict):
-    """
-    Validates the valdict, adding default values explicitly.
-    """
-
-    return self._prepare_valdict(self.__attr_dict, valdict)
-
-  def prepare_id_valdict(self, valdict):
-    """
-    Validates the identity valdict, adding default values explicitly.
-    """
-
-    return self._prepare_valdict(self.__id_attr_dict, valdict)
-
-  def make_identity(self, valdict):
-    """
-    Makes a hashable key from the values of identifying attributes in valdict.
-
-    Does not check validity of valdict.
-    """
-
-    id_valdict = dict((k, valdict[k]) for k in self.__id_attr_dict)
-    return Identity(self, id_valdict)
-
-class _TypedBase(object):
-  """
-  Base class for a typed object.
-
-  Don't use directly.
-  """
-
-  def __init__(self, type):
-    self.__type = type
+  def __getitem__(self, key):
+    return self.__valdict[key]
 
   @property
   def type(self):
-    return self.__type
+    return self.__stype
 
-class ReadAttributes(object):
+
+class ReadAttrs(object):
   """
   Attributes read from system state.
   """
 
-  def __init__(self, id):
-    self.__id = id
+  def __init__(self, id_attrs, state_type):
+    self.__id_attrs = id_attrs
+    self.__state_type = state_type
 
   def __getitem__(self, key):
-    try:
-      return self.__id.attributes[key]
-    except KeyError:
-      attr = self.__id.type.attr_lookup(key)
-      return attr.read_value(self.__id)
+    attr = self.__state_type[key]
+    return attr.read_value(self.__id_attrs)
 
-class _TypedWithIdentityBase(_TypedBase):
+
+class Resource(object):
+  # Subclassing to implement abstract stuff.
+  def __init__(self, rtype, id_valdict, wanted_valdict):
+    if not isinstance(rtype, ResourceType):
+      raise TypeError
+    self.__rtype = rtype
+    self.__id_attrs = Attrs(rtype.id_type, id_valdict)
+    self.__wanted_attrs = Attrs(rtype.state_type, wanted_valdict)
+    # Reads one by one
+    self.__read_attrs = ReadAttrs(self.id_attrs, self.__rtype.state_type)
+
   @property
-  def identity(self):
+  def id_attrs(self):
+    return self.__id_attrs
+
+  @property
+  def wanted_attrs(self):
+    return self.__wanted_attrs
+
+  def _read_attrs(self):
+    """
+    Read attribute values.
+    
+    Override this when it is more convenient to read all attributes at once.
+    """
+
+    return NotImplemented
+
+  def read_attrs(self):
+    """
+    Attribute values as they are read from system state.
+    """
+
+    # This is a method and not a property because it changes.
+
+    r = self._read_attrs()
+    if r != NotImplemented:
+      return Attrs(self.__rtype.state_type, r)
+    return self.__read_attrs
+
+  def place_extra_deps(self, resource_graph):
+    # For extra resource-resource dependencies. Eg depend on a param.
+    pass
+
+  def place_transitions(self, transition_graph):
+    # Only transitions can be evaluated, so put them as deps on the graph.
     raise NotImplementedError
 
-  @property
-  def read_attributes(self):
-    """
-    A read-only dictionary of attribute values,
-    as they are read from system state.
-    """
 
-    return ReadAttributes(self.identity)
-
-class InstanceBase(_TypedWithIdentityBase):
-  """
-  An instance, and not a reference.
-
-  Subclass this.
-  """
-
-  def __init__(self, type, valdict):
-    type.prepare_valdict(valdict)
-    self.__valdict = valdict
-    super(InstanceBase, self).__init__(type)
-
-  @property
-  def attributes(self):
-    """
-    A dictionary of raw attribute values.
-    """
-
-    i = ImmutableDict(self.__valdict)
-    if i is None:
+class ResourceRef(object):
+  # No subclassing
+  def __init__(self, rtype, id_valdict):
+    if not isinstance(rtype, ResourceType):
       raise TypeError
-    return i
+    self.__rtype = rtype
+    self.__id_attrs = Attrs(rtype.id_type, id_valdict)
 
   @property
-  def identity(self):
-    """
-    A hashable, immutable key.
-    """
+  def id_attrs(self):
+    return self.__id_attrs
 
-    return self.type.make_identity(self.__valdict)
 
-class InstanceRef(_TypedWithIdentityBase):
-  """
-  A reference to an instance.
-
-  Use, do not subclass.
-  """
-
-  def __init__(self, type, id_valdict):
-    type.prepare_id_valdict(id_valdict)
-    self.__id_valdict = id_valdict
-    super(InstanceRef, self).__init__(type)
+class Transition(object):
+  # Subclassing to implement abstract stuff.
+  def __init__(self, ttype, instr_valdict):
+    if not isinstance(ttype, TransitionType):
+      raise TypeError
+    self.__ttype = ttype
+    self.__instructions_attrs = \
+        Attrs(ttype.instr_type, instr_valdict)
 
   @property
-  def identity(self):
-    """
-    A hashable, immutable key.
-    """
+  def instr_attrs(self):
+    return self.__instructions_attrs
 
-    return self.type.make_identity(self.__id_valdict)
+  def realize(self):
+    raise NotImplementedError
+
 

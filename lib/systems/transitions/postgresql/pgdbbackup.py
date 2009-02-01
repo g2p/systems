@@ -4,16 +4,15 @@ import re
 
 from pgdatabase import PgDatabase
 
+from systems.dsl import resource
 from systems.registry import Registry
-from systems.realizable import Transition
-from systems.realizable_dsl import transition
-from systems.typesystem import Type, AttrType
+from systems.typesystem import AttrType, ResourceType, Resource, Attrs
 from systems.util.templates import build_and_render
 
 __all__ = ('register', )
 
 def is_valid_db(db):
-  name = db.attributes['name']
+  name = db.id_attrs['name']
   # See the run-parts manpage for restrictions on cron file names.
   # We could encode stuff using dashes, but it's too much trouble.
   return re.match('^[a-z0-9-]*$', name)
@@ -21,13 +20,13 @@ def is_valid_db(db):
 def is_valid_state(state):
   return state in ('present', 'absent', )
 
-class PgDbBackup(Transition):
-  def ensure_extra_deps(self, context):
-    context.ensure_dependency(self, self.attributes['database'])
+class PgDbBackup(Resource):
+  def place_extra_deps(self, resource_graph):
+    resource_graph.add_dependency(self.id_attrs['database'], self)
 
-  def realize(self):
-    dbname = self.attributes['database'].attributes['name']
-    state = self.attributes['state']
+  def place_transitions(self, transition_graph):
+    dbname = self.id_attrs['database'].id_attrs['name']
+    state = self.wanted_attrs['state']
 
     fname = '/etc/cron.daily/db-backup-' + dbname
     template = u'''#!/bin/sh
@@ -39,24 +38,25 @@ class PgDbBackup(Transition):
     '''
     code = build_and_render(template, dbname=dbname)
 
-    cron_trans = transition('File',
+    cron_file = resource('File',
         state=state,
         path=fname,
         mode=0700,
         contents=code.encode('utf8'), )
-    cron_trans.realize()
+    return cron_file.place_transitions(transition_graph)
 
 def register():
-  restype = Type('PgDbBackup', PgDbBackup,
-    [
-    AttrType('database',
-      identifying=True,
+  restype = ResourceType('PgDbBackup', PgDbBackup,
+      id_type={
+        'database': AttrType(
       pytype=PgDatabase,
       valid_condition=is_valid_db),
-    AttrType('state',
+        },
+      state_type={
+        'state': AttrType(
       default_value='present',
       valid_condition=is_valid_state),
-  ])
-  Registry.get_singleton().transition_types.register(restype)
+  })
+  Registry.get_singleton().resource_types.register(restype)
 
 

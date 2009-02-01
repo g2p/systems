@@ -6,8 +6,7 @@ import pwd
 import subprocess
 
 from systems.registry import Registry
-from systems.realizable import Transition
-from systems.typesystem import Type, AttrType
+from systems.typesystem import AttrType, TransitionType, Transition
 from systems.util.uid import drop_privs_permanently
 
 __all__ = ('register', )
@@ -22,26 +21,26 @@ class Command(Transition):
 
   @classmethod
   def register(cls):
-    cls.__restype = Type('Command', cls,
-      [
-      AttrType('name',
-        identifying=True),
-      AttrType('cmdline',
-        valid_condition=cls.is_valid_cmdline),
-      AttrType('cmdline_input',
-        none_allowed=True,
-        # So we needn't bother with encodings
-        pytype=str),
-      AttrType('unless',
-        none_allowed=True,
-        valid_condition=cls.is_valid_cmdline),
-      AttrType('username',
-        none_allowed=True,
-        pytype=str),
-      AttrType('extra_env',
-        none_allowed=True,
-        valid_condition=cls.is_valid_extra_env),
-    ])
+    cls.__restype = TransitionType('Command', cls,
+        instr_type={
+          'cmdline': AttrType(
+            valid_condition=cls.is_valid_cmdline),
+          'cmdline_input': AttrType(
+            none_allowed=True,
+            # So we needn't bother with encodings
+            pytype=str),
+          'unless': AttrType(
+            none_allowed=True,
+            valid_condition=cls.is_valid_cmdline),
+          'username': AttrType(
+            none_allowed=True,
+            pytype=str),
+          'extra_env': AttrType(
+            none_allowed=True,
+            valid_condition=cls.is_valid_extra_env),
+          },
+        results_type={
+          })
     Registry.get_singleton().transition_types.register(cls.__restype)
 
   @classmethod
@@ -82,33 +81,33 @@ class Command(Transition):
     return fn
 
   def realize(self):
-    env = self.env_with(self.attributes['extra_env'])
-    preexec_fn = self.dropprivs_fn(self.attributes['username'])
+    env = self.env_with(self.instr_attrs['extra_env'])
+    preexec_fn = self.dropprivs_fn(self.instr_attrs['username'])
 
-    if self.attributes['unless'] is not None:
+    if self.instr_attrs['unless'] is not None:
       # Remember, 0 means success
       if subprocess.call(
-          self.attributes['unless'],
+          self.instr_attrs['unless'],
           preexec_fn=preexec_fn,
           env=env) == 0:
         return
 
-    if self.attributes['cmdline_input'] is None:
+    if self.instr_attrs['cmdline_input'] is None:
       # Let stdin pass through
       input_flag = None
     else:
       # We have a string to write
       input_flag = subprocess.PIPE
     p = subprocess.Popen(
-        self.attributes['cmdline'],
+        self.instr_attrs['cmdline'],
         stdin=input_flag,
         preexec_fn=preexec_fn,
         env=env)
     # Input may safely be None. Writes, waits until completion.
-    p.communicate(self.attributes['cmdline_input'])
+    p.communicate(self.instr_attrs['cmdline_input'])
     if p.returncode != 0:
       raise subprocess.CalledProcessError(
-          p.returncode, self.attributes['cmdline'])
+          p.returncode, self.instr_attrs['cmdline'])
 
 def register():
   Command.register()

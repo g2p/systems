@@ -5,13 +5,13 @@ import pwd
 import re
 import subprocess
 
+from systems.dsl import transition
 from systems.registry import Registry
-from systems.realizable import Transition
-from systems.typesystem import Type, AttrType
+from systems.typesystem import AttrType, ResourceType, Resource, Attrs
 
 __all__ = ('register', )
 
-class User(Transition):
+class User(Resource):
   """
   A system user managed on the local system (/etc/password and friends)
 
@@ -20,25 +20,23 @@ class User(Transition):
 
   @classmethod
   def register(cls):
-    cls.__restype = Type('User', cls,
-      [
-      AttrType('name',
-        identifying=True,
-        valid_condition=cls.is_valid_username),
-      AttrType('state',
-        default_value='present',
-        reader=cls.read_state,
-        valid_condition=cls.is_valid_state),
-      AttrType('home',
-        none_allowed=True,
-        reader=cls.read_home,
-        valid_condition=cls.is_valid_home),
-      AttrType('shell',
-        none_allowed=True,
-        reader=cls.read_shell,
-        valid_condition=cls.is_valid_shell),
-    ])
-    Registry.get_singleton().transition_types.register(cls.__restype)
+    cls.__restype = ResourceType('User', cls,
+        id_type={
+          'name': AttrType(
+            valid_condition=cls.is_valid_username),
+          },
+        state_type={
+          'state': AttrType(
+            default_value='present',
+            valid_condition=cls.is_valid_state),
+          'home': AttrType(
+            none_allowed=True,
+            valid_condition=cls.is_valid_home),
+          'shell': AttrType(
+            none_allowed=True,
+            valid_condition=cls.is_valid_shell),
+          })
+    Registry.get_singleton().resource_types.register(cls.__restype)
 
   @classmethod
   def is_valid_username(cls, name):
@@ -57,9 +55,8 @@ class User(Transition):
   def is_valid_shell(cls, shell):
     return shell is None or bool(re.match('^/[/a-z0-9_-]*$', shell))
 
-  @classmethod
-  def read(self, id):
-    name = id.attributes['name']
+  def _read_attrs(self):
+    name = self.id_attrs['name']
     try:
       p = pwd.getpwnam(name)
     except KeyError:
@@ -71,27 +68,14 @@ class User(Transition):
       home = p.pw_dir
       shell = p.pw_shell
     return {
-        'name': name,
         'state': state,
         'home': home,
         'shell': shell,
         }
 
-  @classmethod
-  def read_state(cls, id):
-    return cls.read(id)['state']
-
-  @classmethod
-  def read_home(cls, id):
-    return cls.read(id)['home']
-
-  @classmethod
-  def read_shell(cls, id):
-    return cls.read(id)['shell']
-
-  def realize(self):
-    state0 = self.read(self.identity)
-    state1 = self.attributes
+  def place_transitions(self, transition_graph):
+    state0 = self.read_attrs()
+    state1 = self.wanted_attrs
     if state0 == state1:
       return
 
@@ -99,22 +83,24 @@ class User(Transition):
     if (s0, s1) == ('absent', 'absent'):
       return
     elif (s0, s1) == ('present', 'present'):
-      cmd = ['/usr/sbin/usermod', ]
+      cmdline = ['/usr/sbin/usermod', ]
     elif (s0, s1) == ('absent', 'present'):
-      cmd = ['/usr/sbin/adduser', '--system', '--disabled-password', ]
+      cmdline = ['/usr/sbin/adduser', '--system', '--disabled-password', ]
     elif (s0, s1) == ('present', 'absent'):
-      cmd = ['/usr/sbin/deluser', ]
+      cmdline = ['/usr/sbin/deluser', ]
     else:
       assert False
 
     if s1 == 'present':
-      if self.attributes['home'] is not None:
-        cmd.extend(['--home', self.attributes['home']])
-      if self.attributes['shell'] is not None:
-        cmd.extend(['--shell', self.attributes['shell']])
+      if self.wanted_attrs['home'] is not None:
+        cmdline.extend(['--home', self.wanted_attrs['home']])
+      if self.wanted_attrs['shell'] is not None:
+        cmdline.extend(['--shell', self.wanted_attrs['shell']])
 
-    cmd.extend(['--', self.attributes['name']])
-    subprocess.check_call(cmd)
+    cmdline.extend(['--', self.id_attrs['name']])
+    cmd = transition('Command', cmdline=cmdline)
+    transition_graph.add_transition(cmd)
+    return cmd
 
 def register():
   User.register()

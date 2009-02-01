@@ -1,6 +1,5 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
-__all__ = ('ImmutableDict', )
 
 class ImmutableDict(object):
   """
@@ -15,4 +14,26 @@ class ImmutableDict(object):
 
   def __getitem__(self, key):
     return self.__dct[key]
+
+  def __contains__(self, key):
+    return key in self.__dct
+
+  def iteritems(self):
+    return self.__dct.iteritems()
+
+  def iterkeys(self):
+    return self.__dct.iterkeys()
+
+  def keys(self):
+    return self.__dct.keys()
+
+
+class Named(object):
+  def __init__(self, name):
+    self.__name = name
+
+  @property
+  def name(self):
+    return self.__name
+
 
