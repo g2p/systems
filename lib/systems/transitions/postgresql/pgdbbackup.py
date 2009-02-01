@@ -23,8 +23,6 @@ def is_valid_state(state):
 class PgDbBackup(Resource):
   def place_extra_deps(self, resource_graph):
     resource_graph.add_dependency(self.id_attrs['database'], self)
-
-  def place_transitions(self, transition_graph):
     dbname = self.id_attrs['database'].id_attrs['name']
     state = self.wanted_attrs['state']
 
@@ -43,7 +41,8 @@ class PgDbBackup(Resource):
         path=fname,
         mode=0700,
         contents=code.encode('utf8'), )
-    return cron_file.place_transitions(transition_graph)
+    resource_graph.add_resource(cron_file)
+    resource_graph.add_dependency(cron_file, self)
 
 def register():
   restype = ResourceType('PgDbBackup', PgDbBackup,

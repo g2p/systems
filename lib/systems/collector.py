@@ -37,8 +37,28 @@ class Collector(Named):
 
   def collect(self, transitions):
     """
-    Build one realizable from multiple.
+    Build one Aggregate from many Resource.
     """
 
     raise NotImplementedError('collect')
+
+
+class Aggregate(object):
+  """
+  Apes Resource somewhat.
+  """
+
+  def place_extra_deps(self, resource_graph):
+    # Do not override this! Danger!
+    pass
+
+  def place_transitions(self, transition_graph):
+    # Override this.
+    raise NotImplementedError
+
+  @property
+  def identity(self):
+    # identities do not make much sense here.
+    return self
+
 

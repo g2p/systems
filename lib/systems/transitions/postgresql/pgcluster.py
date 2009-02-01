@@ -25,13 +25,13 @@ class PgCluster(Resource):
   note those are not strictly a hostname or a port number.
   """
 
-  def place_transitions(self, transition_graph):
-    # XXX Package is a coarser granuality than cluster.
+  def place_extra_deps(self, resource_graph):
+    # Also: pg_createcluster, pg_deletecluster
     state = self.wanted_attrs['state']
     pkg_state = { 'present': 'installed', 'absent': 'purged', }[state]
-    pkg_trans = resource('AptitudePackage', name='postgresql')
-    # place_extra_deps would also work in this case
-    return pkg_trans.place_transitions(transition_graph)
+    pkg = resource('AptitudePackage', name='postgresql')
+    resource_graph.add_resource(pkg)
+    resource_graph.add_dependency(pkg, self)
 
   def command_trans(self, **kwargs):
     e = kwargs.get('extra_env', {})

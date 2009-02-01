@@ -27,7 +27,7 @@ class AttrType(object):
     and they will be the default. default_value cannot be set in this case.
     """
 
-    # Allowing None does complicate this signature.
+    # Handling None values does make this signature complicated.
 
     if none_allowed and default_value is not None:
       raise ValueError("Can't set both none_allowed and default_value")
@@ -111,6 +111,15 @@ class SimpleType(object):
     """
 
     self.__atypes = ImmutableDict(atypes)
+
+  def _key(self):
+    return self.atypes
+
+  def __hash__(self):
+    return hash(self._key())
+
+  def __cmp__(self, other):
+    return -cmp(other, self._key())
 
   def prepare_valdict(self, valdict):
     """
@@ -221,10 +230,7 @@ class Attrs(object):
     return hash(self._key())
 
   def __cmp__(self, other):
-    k0, k1 = self._key(), other._key()
-    if k0 == k1:
-      return 0
-    return cmp(k0, k1)
+    return -cmp(other, self._key())
 
   def __getitem__(self, key):
     return self.__valdict[key]
@@ -267,6 +273,19 @@ class Resource(object):
   def wanted_attrs(self):
     return self.__wanted_attrs
 
+  @property
+  def identity(self):
+    return (self.__rtype.name, self.__id_attrs)
+
+  def _key(self):
+    return (self.__rtype.name, self.__id_attrs, self.__wanted_attrs)
+
+  def __cmp__(self, other):
+    return -cmp(other, self._key())
+
+  def __hash__(self):
+    return hash(self._key())
+
   def _read_attrs(self):
     """
     Read attribute values.
@@ -289,12 +308,23 @@ class Resource(object):
     return self.__read_attrs
 
   def place_extra_deps(self, resource_graph):
-    # For extra resource-resource dependencies. Eg depend on a param.
+    """
+    Place resources that realize the resource,
+    or are prerequisistes to its realization.
+    """
+
+    # For resource-resource dependencies. May depend on a param.
     pass
 
   def place_transitions(self, transition_graph):
+    """
+    Place transitions that realize the resource.
+
+    Consider using place_extra_deps when you call up other resources.
+    """
+
     # Only transitions can be evaluated, so put them as deps on the graph.
-    raise NotImplementedError
+    pass
 
 
 class ResourceRef(object):
@@ -306,8 +336,8 @@ class ResourceRef(object):
     self.__id_attrs = Attrs(rtype.id_type, id_valdict)
 
   @property
-  def id_attrs(self):
-    return self.__id_attrs
+  def identity(self):
+    return (self.__rtype.name, self.__id_attrs)
 
 
 class Transition(object):

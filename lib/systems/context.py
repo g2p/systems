@@ -4,8 +4,9 @@ from itertools import ifilter
 
 import networkx as NX
 
-from systems.typesystem import Resource, Transition, ResourceRef
+from systems.collector import Aggregate
 from systems.registry import Registry
+from systems.typesystem import Resource, Transition, ResourceRef
 
 __all__ = ('Context', 'global_context', )
 
@@ -25,6 +26,7 @@ class DepsGraph(object):
     self._graph = NX.DiGraph()
     self._first = SentinelNode()
     self._last = SentinelNode()
+    self._graph.add_edge(self._first, self._last)
 
   def add_dependency(self, node0, node1):
     # Requiring nodes to be already added ensures type safety
@@ -54,8 +56,8 @@ class DepsGraph(object):
         self._graph.nodes_iter())
 
   def connected(self, n0, n1):
-    if NX.shortest_path(self.__graph, n0, n1) \
-        or NX.shortest_path(self.__graph, n1, n0):
+    if NX.shortest_path(self._graph, n0, n1) \
+        or NX.shortest_path(self._graph, n1, n0):
       return True
     return False
 
@@ -88,13 +90,34 @@ class ResourceGraph(DepsGraph):
     super(ResourceGraph, self).__init__()
     self.__dict = {}
 
+  def __getitem__(self, key):
+    return self.__dict[key]
+
   def add_resource(self, resource):
+    """
+    Add a resource.
+
+    If an identical resource exists, nothing is done.
+    """
+
     if not isinstance(resource, Resource):
       raise TypeError(resource, Resource)
-    if resource.id_attrs in self.__dict:
-      raise RuntimeError
-    self._add_node(resource)
-    self.__dict[resource.id_attrs] = resource
+    return self._add_internal(resource)
+
+  def _add_resource_or_aggregate(self, roa):
+    if not isinstance(roa, (Resource, Aggregate)):
+      raise TypeError(roa, (Resource, Aggregate))
+    return self._add_internal(roa)
+
+  def _add_internal(self, node):
+    if node.identity in self.__dict:
+      r2 = self[node.identity]
+      if node == r2:
+        return r2
+      raise RuntimeError(node, r2)
+    self._add_node(node)
+    self.__dict[node.identity] = node
+    return node
 
   def replace_resources(self, r0s, r1):
     """
@@ -108,11 +131,12 @@ class ResourceGraph(DepsGraph):
     # internal to r0s. This introduces self-loops that we would then remove.
 
     for r0 in r0s:
-      if not r0.id_attrs in self.__dict:
+      if not r0.identity in self.__dict:
         raise KeyError(r0)
-    if r1.id_attrs in self.__dict:
+    # Don't accept identification here (for now).
+    if r1.identity in self.__dict:
       raise RuntimeError
-    self.add_resource(r1)
+    r1 = self._add_resource_or_aggregate(r1)
     for r0 in r0s:
       for pred in self._graph.predecessors_iter(r0):
         self._graph.add_edge(pred, r1)
@@ -144,9 +168,15 @@ class Context(object):
       raise RuntimeError(u'Context state should be «%s»' % state)
 
   def ensure_resource(self, r):
+    """
+    Add a resource to be realized.
+
+    If an identical resource exists, it is returned.
+    """
+
     self.require_state('init')
 
-    self.__resources.add_resource(r)
+    return self.__resources.add_resource(r)
 
   def ensure_transition(self, t):
     self.require_state('init')
@@ -163,9 +193,10 @@ class Context(object):
     if self.__state == 'frozen':
       return
     self.require_state('init')
-    self._resolve_references()
-    self._collect()
+    # Order is important
     self._extra_depends()
+    self._collect()
+    self._resolve_references()
     self._transitions_from_resources()
     self.__state = 'frozen'
 
@@ -223,8 +254,18 @@ class Context(object):
           self.__resources.replace_resources(part, merged)
 
   def _extra_depends(self):
-    for r in self.__resources.nodes_iter():
-      r.place_extra_deps(self.__resources)
+    # Call place_extra_deps for all resources,
+    # including those that were added by a previous call.
+    seen = set()
+    while True:
+      all = set(r.identity for r in self.__resources.nodes_iter())
+      fresh = all.difference(seen)
+      if bool(fresh) == False: # Test for emptiness
+        return
+      for rid in fresh:
+        r = self.__resources[rid]
+        r.place_extra_deps(self.__resources)
+      seen.update(fresh)
 
   def _transitions_from_resources(self):
     # Map resource ids to transition contexts.
@@ -232,11 +273,11 @@ class Context(object):
     for r in self.__resources.topological_sort():
       tg = TransitionGraph()
       r.place_transitions(tg)
-      predecessors = [lasts[r0.id_attrs]
+      predecessors = [lasts[r0.identity]
           for r0 in self.__resources._graph.predecessors_iter(r)
           if not isinstance(r0, SentinelNode)]
       last = self.__transitions.merge_transitions(tg, predecessors)
-      lasts[r.id_attrs] = last
+      lasts[r.identity] = last
 
   def realize(self):
     """

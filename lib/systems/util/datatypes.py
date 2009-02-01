@@ -27,6 +27,15 @@ class ImmutableDict(object):
   def keys(self):
     return self.__dct.keys()
 
+  def _key(self):
+    return frozenset(self.__dct.iteritems())
+
+  def __hash__(self):
+    return hash(self._key())
+
+  def __cmp__(self, other):
+    return -cmp(other, self._key())
+
 
 class Named(object):
   def __init__(self, name):

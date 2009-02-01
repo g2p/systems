@@ -3,12 +3,13 @@ import re
 import os
 import subprocess
 
-from systems.collector import Collector
+from systems.collector import Collector, Aggregate
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource
 from systems.dsl import transition
 
 __all__ = ('register', )
+
 
 class AptitudePackage(Resource):
   """
@@ -78,7 +79,7 @@ class AptitudePackage(Resource):
     return AptitudePackages([self]).place_transitions(transition_graph)
 
 
-class AptitudePackages(object):
+class AptitudePackages(Aggregate):
   def __init__(self, packages):
     self.__packages = packages
 
