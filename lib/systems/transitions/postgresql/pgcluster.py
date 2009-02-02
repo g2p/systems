@@ -26,9 +26,10 @@ class PgCluster(Resource):
   def get_extra_deps(self):
     # Also: pg_createcluster, pg_deletecluster
     present = self.wanted_attrs['present']
-    pkg_state = { True: 'installed', False: 'purged', }[present]
-    pkg = resource('AptitudePackage', name='postgresql')
-    return (pkg, )
+    if present:
+      return (resource('AptitudePackage', name='postgresql'), )
+    else:
+      return ()
 
   def command_trans(self, **kwargs):
     if 'username' not in kwargs:
@@ -68,8 +69,9 @@ class PgCluster(Resource):
     return exists
 
 def register():
-  # Consider conninfo strings; problem is createuser doesn't support them.
-  # However, they do a bit too much (spec the db…) and wouldn't be identifying.
+  # Considered conninfo strings; problem is createuser doesn't support them.
+  # They do a bit too much (spec the db…) and wouldn't be identifying.
+  # Rejected.
 
   restype = ResourceType('PgCluster', PgCluster,
     id_type={

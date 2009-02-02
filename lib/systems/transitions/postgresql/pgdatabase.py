@@ -2,6 +2,7 @@
 
 import re
 
+from pgcluster import PgCluster
 from pguser import PgUser
 
 from systems.dsl import resource
@@ -12,7 +13,7 @@ from systems.util.templates import build_and_render
 __all__ = ('register', )
 
 def read_present(id_attrs):
-  cluster = id_attrs['user'].id_attrs['cluster']
+  cluster = id_attrs['cluster']
   name = id_attrs['name']
   return cluster.check_existence('pg_database', 'datname', name)
 
@@ -21,21 +22,27 @@ def is_valid_dbname(name):
   # We could encode stuff using dashes, but it's too much trouble.
   return re.match('^[a-z0-9-]*$', name)
 
-def create_db_trans(id_attrs):
-  user = id_attrs['user']
-  cluster = user.id_attrs['cluster']
+def is_valid_owner(owner):
+  # XXX Need to check owner's cluster is ours.
+  # valid_condition isn't sufficient because it is attribute-local.
+  return owner.wanted_attrs['present'] is True
+
+def is_valid_cluster(cluster):
+  return cluster.wanted_attrs['present'] is True
+
+def create_db_trans(id_attrs, wanted_attrs):
+  ownername = wanted_attrs['owner'].id_attrs['name']
+  cluster = id_attrs['cluster']
   name = id_attrs['name']
-  username = user.id_attrs['name']
   return cluster.command_trans(
       cmdline=['/usr/bin/createdb', '-e',
         '--encoding', 'UTF8',
-        '--owner', username,
+        '--owner', ownername,
         '--', name,
         ], )
 
 def drop_db_trans(id_attrs):
-  user = id_attrs['user']
-  cluster = user.id_attrs['cluster']
+  cluster = id_attrs['cluster']
   name = id_attrs['name']
   return cluster.command_trans(
       cmdline=['/usr/bin/dropdb', '-e',
@@ -62,26 +69,28 @@ class PgDatabase(Resource):
         mode=0700,
         contents=code.encode('utf8'), )
 
-    user = self.id_attrs['user']
+    owner = self.wanted_attrs['owner']
+    cluster = self.id_attrs['cluster']
 
-    return (user, cron_file)
+    return (cluster, owner, cron_file)
 
-  def place_transitions(self, transition_graph):
+  def place_transitions(self, tg):
     # Caveat:
     # The db could be dropped between place_transitions and realization.
     p0, p1 = self.read_attrs()['present'], self.wanted_attrs['present']
+    # XXX May need to change ownership.
     if (p0, p1) == (False, True):
-      tg.add_transition(create_db_trans(self.id_attrs))
+      tg.add_transition(create_db_trans(self.id_attrs, self.wanted_attrs))
     elif (p0, p1) == (True, False):
       tg.add_transition(drop_db_trans(self.id_attrs))
 
 def register():
   restype = ResourceType('PgDatabase', PgDatabase,
       id_type={
-        # XXX User should probably be moved to state_type,
-        # since the database may exist without the desired owner.
-        'user': AttrType(
-          pytype=PgUser),
+        'cluster': AttrType(
+          default_value=resource('PgCluster'),
+          valid_condition=is_valid_cluster,
+          pytype=PgCluster),
         'name': AttrType(
           valid_condition=is_valid_dbname,
           pytype=str),
@@ -91,6 +100,9 @@ def register():
           default_value=True,
           pytype=bool,
           reader=read_present),
+        'owner': AttrType(
+          valid_condition=is_valid_owner,
+          pytype=PgUser),
         'enable_backups': AttrType(
           default_value=True,
           pytype=bool),

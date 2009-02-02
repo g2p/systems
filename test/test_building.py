@@ -26,7 +26,7 @@ ensure_resource(gc, 'User',
     name='zorglub', present=False, shell='/bin/true')
 
 u = resource('PgUser', name='user-pfuuit')
-d = ensure_resource(gc, 'PgDatabase', user=u, name='db-pfuuit')
+d = ensure_resource(gc, 'PgDatabase', owner=u, name='db-pfuuit')
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   with open(pub_file) as f:

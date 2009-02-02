@@ -8,6 +8,10 @@ from systems.typesystem import AttrType, ResourceType, Resource, Attrs
 
 __all__ = ('register', )
 
+
+def is_valid_cluster(cluster):
+  return cluster.wanted_attrs['present'] is True
+
 def read_present(id_attrs):
   cluster = id_attrs['cluster']
   name = id_attrs['name']
@@ -48,6 +52,7 @@ def register():
       id_type={
         'cluster': AttrType(
           default_value=resource('PgCluster'),
+          valid_condition=is_valid_cluster,
           pytype=PgCluster),
         'name': AttrType(
           pytype=str),

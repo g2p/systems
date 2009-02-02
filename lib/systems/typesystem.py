@@ -174,12 +174,12 @@ class ResourceType(Named):
     wanted_valdict = dict((k, v)
         for (k, v) in valdict.iteritems()
         if k in self.__state_type.atypes)
-    errs = list(k
+    unknown_attrs = list(k
         for k in valdict
         if k not in self.__id_type.atypes
         and k not in self.__state_type.atypes)
-    if bool(errs): # Test for non-emptiness
-      raise ValueError
+    if bool(unknown_attrs): # Test for non-emptiness
+      raise ValueError(unknown_attrs)
     return self.__instance_class(self, id_valdict, wanted_valdict)
 
   def make_ref(self, **id_valdict):
