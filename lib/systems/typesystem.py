@@ -288,7 +288,7 @@ class Resource(object):
   def _read_attrs(self):
     """
     Read attribute values.
-    
+
     Override this when it is more convenient to read all attributes at once.
     """
 
