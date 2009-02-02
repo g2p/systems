@@ -4,7 +4,7 @@ import sys
 
 import systems.context
 import systems.transitions
-from systems.dsl import resource, transition
+from systems.dsl import resource, transition, ensure_resource
 from systems.util.templates import build_and_render
 
 gc = systems.context.global_context()
