@@ -357,6 +357,7 @@ class Transition(object):
     self.__ttype = ttype
     self.__instructions_attrs = \
         Attrs(ttype.instr_type, instr_valdict)
+    self.__results_attrs = None
 
   @property
   def instr_attrs(self):
@@ -364,12 +365,16 @@ class Transition(object):
 
   @property
   def results_attrs(self):
+    if self.__results_attrs is None:
+      raise RuntimeError("realize hasn't been called yet")
     return self.__results_attrs
 
   def realize_impl(self):
     raise NotImplementedError
 
   def realize(self):
+    if self.__results_attrs is not None:
+      raise RuntimeError('realize cannot be called more than once')
     results = self.realize_impl()
     self.__results_attrs = Attrs(self.__ttype.results_type, results)
 
