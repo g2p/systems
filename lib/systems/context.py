@@ -14,7 +14,7 @@ __all__ = ('Context', 'global_context', )
 class SentinelNode(object):
   pass
 
-class DepsGraph(object):
+class TransitionGraph(object):
   """
   A dependency graph.
 
@@ -28,8 +28,11 @@ class DepsGraph(object):
     self._last = SentinelNode()
     self._graph.add_edge(self._first, self._last)
 
-  def add_dependency(self, node0, node1):
-    # Requiring nodes to be already added ensures type safety
+  def add_transition_dependency(self, node0, node1):
+    if not isinstance(node0, (Transition, SentinelNode)):
+      raise TypeError(node0, (Transition, SentinelNode))
+    if not isinstance(node1, (Transition, SentinelNode)):
+      raise TypeError(node1, (Transition, SentinelNode))
     if not self._graph.has_node(node0):
       raise KeyError(node0)
     if not self._graph.has_node(node1):
@@ -41,57 +44,61 @@ class DepsGraph(object):
     self._graph.add_edge(node0, node1)
     # Expensive check I guess.
     if not NX.is_directed_acyclic_graph(self._graph):
+      # Re-establish invariant.
       self._graph.remove_edge(node0, node1)
-      #XXX NX doesn't have a 1-line method for listing those cycles
+      # XXX NX doesn't have a 1-line method for listing those cycles
       raise ValueError('Dependency graph has cycles')
 
   def _add_node(self, node):
     self._graph.add_node(node)
     self._graph.add_edge(self._first, node)
     self._graph.add_edge(node, self._last)
+    return node
 
-  def nodes_iter(self):
+  def _add_sentinel(self, node):
+    if not isinstance(node, SentinelNode):
+      raise TypeError(node, SentinelNode)
+    return self._add_node(node)
+
+  def iter_transitions(self):
     return ifilter(
         lambda n: not isinstance(n, SentinelNode),
         self._graph.nodes_iter())
 
-  def connected(self, n0, n1):
-    if NX.shortest_path(self._graph, n0, n1) \
-        or NX.shortest_path(self._graph, n1, n0):
-      return True
-    return False
-
-  def topological_sort(self):
+  def sorted_transitions(self):
     return [n for n in NX.topological_sort(self._graph)
         if not isinstance(n, SentinelNode)]
 
-
-class TransitionGraph(DepsGraph):
   def add_transition(self, transition):
     if not isinstance(transition, Transition):
       raise TypeError(transition, Transition)
-    self._add_node(transition)
-
-  def merge_transitions(self, transition_graph, predecessors):
-    if not isinstance(transition_graph, TransitionGraph):
-      raise TypeError
-    # Do not skip sentinels.
-    for n in transition_graph._graph.nodes_iter():
-      self._add_node(n)
-    for (n0, n1) in transition_graph._graph.edges_iter():
-      self.add_dependency(n0, n1)
-    for n in predecessors:
-      self.add_dependency(n, transition_graph._first)
-    return transition_graph._last
+    return self._add_node(transition)
 
 
-class ResourceGraph(DepsGraph):
+class ResInGraph(object):
+  def __init__(self, res, before, after):
+    self._res = res
+    self._before = before
+    self._after = after
+
+
+class ResourceGraph(TransitionGraph):
+  """
+  A graph of resources and transitions.
+
+  Resources have a position in the transition graph.
+  """
+
   def __init__(self):
     super(ResourceGraph, self).__init__()
     self.__dict = {}
 
-  def __getitem__(self, key):
-    return self.__dict[key]
+  def resource_at(self, key):
+    return self.__dict[key]._res
+
+  def iter_resources(self):
+    for rig in self.__dict.itervalues():
+      yield rig._res
 
   def add_resource(self, resource):
     """
@@ -102,24 +109,45 @@ class ResourceGraph(DepsGraph):
 
     if not isinstance(resource, Resource):
       raise TypeError(resource, Resource)
-    return self._add_internal(resource)
+    return self._add_roa_internal(resource)
 
   def _add_resource_or_aggregate(self, roa):
     if not isinstance(roa, (Resource, Aggregate)):
       raise TypeError(roa, (Resource, Aggregate))
-    return self._add_internal(roa)
+    return self._add_roa_internal(roa)
 
-  def _add_internal(self, node):
+  def _add_roa_internal(self, node):
     if node.identity in self.__dict:
-      r2 = self[node.identity]
+      r2 = self.__dict[node.identity]._res
       if node == r2:
         return r2
       raise RuntimeError(node, r2)
-    self._add_node(node)
-    self.__dict[node.identity] = node
+    before = SentinelNode()
+    after = SentinelNode()
+    self._add_sentinel(before)
+    self._add_sentinel(after)
+    self.add_transition_dependency(before, after)
+    self.__dict[node.identity] = ResInGraph(node, before, after)
     return node
 
-  def replace_resources(self, r0s, r1):
+  def add_dependency(self, node0, node1):
+    if isinstance(node0, (Resource, Aggregate)):
+      node0 = self.__dict[node0.identity]._after
+    if isinstance(node1, (Resource, Aggregate)):
+      node1 = self.__dict[node1.identity]._before
+    self.add_transition_dependency(node0, node1)
+
+  def _is_direct_rconnect(self, r0, r1):
+    s0 = self.__dict[r0.identity]._after
+    s1 = self.__dict[r1.identity]._before
+    # shortest_path is also a test for connectedness.
+    return bool(NX.shortest_path(self._graph, s0, s1))
+
+  def resources_connected(self, r0, r1):
+    return self._is_direct_rconnect(r0, r1) \
+        or self._is_direct_rconnect(r1, r0)
+
+  def collect_resources(self, r0s, r1):
     """
     Replace an iterable of resources with one resource.
 
@@ -137,16 +165,44 @@ class ResourceGraph(DepsGraph):
     if r1.identity in self.__dict:
       raise RuntimeError
     r1 = self._add_resource_or_aggregate(r1)
+    before1 = self.__dict[r1.identity]._before
+    after1 = self.__dict[r1.identity]._after
     for r0 in r0s:
-      for pred in self._graph.predecessors_iter(r0):
-        self._graph.add_edge(pred, r1)
-      for succ in self._graph.successors_iter(r0):
-        self._graph.add_edge(r1, succ)
-      self._graph.delete_node(r0)
+      before0 = self.__dict[r0.identity]._before
+      after0 = self.__dict[r0.identity]._after
+      for pred in self._graph.predecessors_iter(before0):
+        self._graph.add_edge(pred, before1)
+      for succ in self._graph.successors_iter(after0):
+        self._graph.add_edge(after1, succ)
+      del self.__dict[r0.identity]
 
     if not NX.is_directed_acyclic_graph(self._graph):
-      # Can't undo.
+      # Can't undo. Invariant will stay broken.
       raise ValueError('Dependency graph has cycles')
+
+  def resource_to_transitions(self, res, transition_graph):
+    """
+    Replace res by a small transition graph.
+
+    The transition_graph is inserted in the main transition graph
+    between the sentinels that represent the resource.
+    """
+
+    if not isinstance(transition_graph, TransitionGraph):
+      raise TypeError
+    if not res.identity in self.__dict:
+      raise KeyError(res)
+    # Do not skip sentinels.
+    for n in transition_graph._graph.nodes_iter():
+      self._add_node(n)
+    for (n0, n1) in transition_graph._graph.edges_iter():
+      self.add_dependency(n0, n1)
+    before = self.__dict[res.identity]._before
+    after = self.__dict[res.identity]._after
+    self.add_dependency(before, transition_graph._first)
+    self.add_dependency(transition_graph._last, after)
+    # Modifing an iterated dict is a bad idea
+    #del self.__dict[res.identity]
 
 
 class Context(object):
@@ -155,7 +211,6 @@ class Context(object):
   """
 
   def __init__(self):
-    self.__transitions = TransitionGraph()
     self.__resources = ResourceGraph()
     self.__state = 'init'
 
@@ -181,7 +236,10 @@ class Context(object):
   def ensure_transition(self, t):
     self.require_state('init')
 
-    self.__transitions.add_transition(t)
+    return self.__resources.add_transition(t)
+
+  def ensure_dependency(self, r0, r1):
+    return self.__resources.add_dependency(r0, r1)
 
   def ensure_frozen(self):
     """
@@ -211,7 +269,7 @@ class Context(object):
     def can_merge(part0, part1):
       for n0 in part0:
         for n1 in part1:
-          if self.__resources.connected(n0, n1):
+          if self.__resources.resources_connected(n0, n1):
             return False
       return True
 
@@ -234,7 +292,7 @@ class Context(object):
     for collector in reg.collectors:
       # Pre-partition is made of parts acceptable for the collector.
       pre_partition = collector.partition(
-          [r for r in self.__resources.nodes_iter() if collector.filter(r)])
+          [r for r in self.__resources.iter_resources() if collector.filter(r)])
       for part in pre_partition:
         # Collector parts are split again, the sub-parts are merged
         # when dependencies allow.
@@ -251,33 +309,27 @@ class Context(object):
           if len(part) <= 1:
             continue
           merged = collector.collect(part)
-          self.__resources.replace_resources(part, merged)
+          self.__resources.collect_resources(part, merged)
 
   def _extra_depends(self):
     # Call place_extra_deps for all resources,
     # including those that were added by a previous call.
     seen = set()
     while True:
-      all = set(r.identity for r in self.__resources.nodes_iter())
+      all = set(r.identity for r in self.__resources.iter_resources())
       fresh = all.difference(seen)
       if bool(fresh) == False: # Test for emptiness
         return
       for rid in fresh:
-        r = self.__resources[rid]
+        r = self.__resources.resource_at(rid)
         r.place_extra_deps(self.__resources)
       seen.update(fresh)
 
   def _transitions_from_resources(self):
-    # Map resource ids to transition contexts.
-    lasts = {}
-    for r in self.__resources.topological_sort():
+    for r in self.__resources.iter_resources():
       tg = TransitionGraph()
       r.place_transitions(tg)
-      predecessors = [lasts[r0.identity]
-          for r0 in self.__resources._graph.predecessors_iter(r)
-          if not isinstance(r0, SentinelNode)]
-      last = self.__transitions.merge_transitions(tg, predecessors)
-      lasts[r.identity] = last
+      self.__resources.resource_to_transitions(r, tg)
 
   def realize(self):
     """
@@ -285,7 +337,7 @@ class Context(object):
     """
 
     self.ensure_frozen()
-    for t in self.__transitions.topological_sort():
+    for t in self.__resources.sorted_transitions():
       t.realize()
 
 

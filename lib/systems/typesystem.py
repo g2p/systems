@@ -175,7 +175,7 @@ class ResourceType(Named):
         for k in valdict
         if k not in self.__id_type.atypes
         and k not in self.__state_type.atypes)
-    if len(errs) != 0:
+    if bool(errs): # Test for non-emptiness
       raise ValueError
     return self.__instance_class(self, id_valdict, wanted_valdict)
 
@@ -186,7 +186,7 @@ class ResourceType(Named):
 def require_disjoint(d1, d2):
   s1 = set(d1.keys())
   s2 = set(d2.keys())
-  if len(s1.intersection(s2)) != 0:
+  if bool(s1.intersection(s2)): # Test for non-emptiness
     raise ValueError(s1, s2)
 
 class TransitionType(Named):

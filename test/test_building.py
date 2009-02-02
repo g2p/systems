@@ -4,18 +4,16 @@ import sys
 
 import systems.context
 import systems.transitions
-from systems.dsl import resource, transition, ensure_resource
+from systems.dsl import ensure_resource, ensure_transition
 from systems.util.templates import build_and_render
 
 gc = systems.context.global_context()
 systems.transitions.register()
 
-t1 = transition('Command',
+ensure_transition(gc, 'Command',
     cmdline=['/bin/echo', 'Chatty command is chatty'])
-t2 = transition('PythonCode',
+ensure_transition(gc, 'PythonCode',
     function=lambda: sys.stderr.write('Fariboles!\n'))
-gc.ensure_transition(t1)
-gc.ensure_transition(t2)
 
 text = build_and_render('Hello {{ name }}!\n', name='Jane Doe')
 
@@ -33,26 +31,24 @@ d = ensure_resource(gc, 'PgDatabase', user=u, name='db-pfuuit')
 b = ensure_resource(gc, 'PgDbBackup', database=d)
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
-  ensure_resource(gc, 'AptitudePackage', name='gitosis')
-
-  ensure_resource(gc, 'User',
-      name=user_name, home=user_home, shell='/bin/sh')
-
   with open(pub_file) as f:
     pub_file_s = f.read()
 
-  cmd = transition('Command',
+  pkg = ensure_resource(gc, 'AptitudePackage', name='gitosis')
+
+  usr = ensure_resource(gc, 'User',
+      name=user_name, home=user_home, shell='/bin/sh')
+
+  ensure_transition(gc, 'Command',
       username=user_name,
       extra_env={'HOME': user_home, },
       cmdline=['/usr/bin/gitosis-init', ],
       cmdline_input=pub_file_s,
       unless=[
         '/usr/bin/test', '-f', user_home+'/.gitosis.conf'],
+      depends=(pkg, usr)
       )
-  # XXX Need mixed resource/transition depends.
-  # Maybe put sentinels to represent resources in the transition graph,
-  # and put all depends in this graph.
-  gc.ensure_transition(cmd)
+
 test_gitosis('g2p-moulinex.pub')
 
 gc.realize()
