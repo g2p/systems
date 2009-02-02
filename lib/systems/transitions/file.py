@@ -80,11 +80,11 @@ class File(Resource):
     return stat.S_IMODE(os.lstat(path).st_mode)
 
   def place_transitions(self, transition_graph):
-    code = transition('PythonCode', function=self.realize)
+    code = transition('PythonCode', function=self._realize)
     transition_graph.add_transition(code)
     return code
 
-  def realize(self):
+  def _realize(self):
     # Don't let files be accessible between creation and permission setting.
     os.umask(0077)
     present0 = self.read_present(self.id_attrs)

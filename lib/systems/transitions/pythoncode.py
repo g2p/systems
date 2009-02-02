@@ -27,14 +27,16 @@ class PythonCode(Transition):
             pytype=dict),
           },
         results_type={
+          'retval': AttrType(),
           })
     Registry.get_singleton().transition_types.register(cls.__type)
 
-  def realize(self):
+  def realize_impl(self):
     f = self.instr_attrs['function']
     a = self.instr_attrs['args']
     k = self.instr_attrs['kargs']
-    f(*a, **k)
+    retval = f(*a, **k)
+    return { 'retval': retval, }
 
 def register():
   PythonCode.register()

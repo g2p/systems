@@ -362,7 +362,15 @@ class Transition(object):
   def instr_attrs(self):
     return self.__instructions_attrs
 
-  def realize(self):
+  @property
+  def results_attrs(self):
+    return self.__results_attrs
+
+  def realize_impl(self):
     raise NotImplementedError
+
+  def realize(self):
+    results = self.realize_impl()
+    self.__results_attrs = Attrs(self.__ttype.results_type, results)
 
 

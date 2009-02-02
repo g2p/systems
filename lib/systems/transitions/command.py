@@ -38,8 +38,14 @@ class Command(Transition):
           'extra_env': AttrType(
             none_allowed=True,
             valid_condition=cls.is_valid_extra_env),
+          'expected_retcodes': AttrType(
+            default_value=(0, ),
+            valid_condition=cls.is_valid_expected_retcodes),
           },
         results_type={
+          'retcode': AttrType(
+            pytype=int,
+            ),
           })
     Registry.get_singleton().transition_types.register(cls.__restype)
 
@@ -64,6 +70,15 @@ class Command(Transition):
     return True
 
   @classmethod
+  def is_valid_expected_retcodes(cls, expected_retcodes):
+    if len(expected_retcodes) < 1:
+      return False
+    for retcode in expected_retcodes:
+      if not isinstance(retcode, int):
+        return False
+    return True
+
+  @classmethod
   def env_with(cls, extra_env):
     if extra_env is None:
       return None
@@ -80,7 +95,7 @@ class Command(Transition):
       drop_privs_permanently(uid=pw_ent.pw_uid, gid=pw_ent.pw_gid)
     return fn
 
-  def realize(self):
+  def realize_impl(self):
     env = self.env_with(self.instr_attrs['extra_env'])
     preexec_fn = self.dropprivs_fn(self.instr_attrs['username'])
 
@@ -105,9 +120,10 @@ class Command(Transition):
         env=env)
     # Input may safely be None. Writes, waits until completion.
     p.communicate(self.instr_attrs['cmdline_input'])
-    if p.returncode != 0:
+    if p.returncode not in self.instr_attrs['expected_retcodes']:
       raise subprocess.CalledProcessError(
           p.returncode, self.instr_attrs['cmdline'])
+    return { 'retcode': p.returncode, }
 
 def register():
   Command.register()
