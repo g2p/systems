@@ -92,7 +92,7 @@ setup(name='Systems',
       packages=[
            'systems',
            'systems.transitions',
-           #'systems.transitions.file',
+           'systems.transitions.file',
            'systems.transitions.postgresql',
            #'systems.transitions.subversion',
            'systems.util',
