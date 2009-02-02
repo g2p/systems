@@ -13,9 +13,9 @@ __all__ = ('register', )
 
 class AptitudePackage(Resource):
   """
-  A debian package, managed by aptitude
+  A debian package, managed by aptitude.
 
-  Dependencies are not managed here.
+  Package dependencies are not managed here.
   """
 
   @classmethod

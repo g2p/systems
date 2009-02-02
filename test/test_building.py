@@ -14,38 +14,28 @@ t1 = transition('Command',
     cmdline=['/bin/echo', 'Chatty command is chatty'])
 t2 = transition('PythonCode',
     function=lambda: sys.stderr.write('Fariboles!\n'))
-
 gc.ensure_transition(t1)
 gc.ensure_transition(t2)
 
 text = build_and_render('Hello {{ name }}!\n', name='Jane Doe')
-f = resource('File',
+
+ensure_resource(gc, 'File',
     path='/tmp/testfile',
     mode=0644,
     contents=text.encode('utf8'))
-p = resource('AptitudePackage', name='python-networkx')
-u = resource('User',
+ensure_resource(gc, 'AptitudePackage', name='python-networkx')
+ensure_resource(gc, 'User',
     name='zorglub', state='absent', shell='/bin/true')
 
-gc.ensure_resource(p)
-gc.ensure_resource(f)
-gc.ensure_resource(u)
-
-c = resource('PgCluster')
-u = resource('PgUser', cluster=c, name='user-pfuuit')
-d = resource('PgDatabase', user=u, name='db-pfuuit')
-b = resource('PgDbBackup', database=d)
-
-gc.ensure_resource(c)
-gc.ensure_resource(u)
-gc.ensure_resource(d)
-gc.ensure_resource(b)
-
+c = ensure_resource(gc, 'PgCluster')
+u = ensure_resource(gc, 'PgUser', cluster=c, name='user-pfuuit')
+d = ensure_resource(gc, 'PgDatabase', user=u, name='db-pfuuit')
+b = ensure_resource(gc, 'PgDbBackup', database=d)
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
-  pkg = resource('AptitudePackage', name='gitosis')
+  ensure_resource(gc, 'AptitudePackage', name='gitosis')
 
-  user = resource('User',
+  ensure_resource(gc, 'User',
       name=user_name, home=user_home, shell='/bin/sh')
 
   with open(pub_file) as f:
@@ -62,8 +52,6 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   # XXX Need mixed resource/transition depends.
   # Maybe put sentinels to represent resources in the transition graph,
   # and put all depends in this graph.
-  gc.ensure_resource(pkg)
-  gc.ensure_resource(user)
   gc.ensure_transition(cmd)
 test_gitosis('g2p-moulinex.pub')
 
