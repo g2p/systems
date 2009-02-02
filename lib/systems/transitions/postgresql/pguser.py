@@ -11,13 +11,12 @@ __all__ = ('register', )
 def read_present(id_attrs):
   cluster = id_attrs['cluster']
   name = id_attrs['name']
-  # Tweak Command to get retval
-  # ['/usr/bin/psql', '-t', '-c', "SELECT COUNT(*) FROM pg_roles WHERE rolname = '$name'", '|', 'grep', '-q', '1', ],
+  return cluster.check_existence('pg_roles', 'rolname', name)
 
 def create_user_trans(id_attrs):
   cluster = id_attrs['cluster']
   name = id_attrs['name']
-  return cluster.privileged_command_trans(
+  return cluster.command_trans(
       cmdline=['/usr/bin/createuser', '-e',
         '-S', '-D', '-R', '-l', '-i',
         '--', name,
@@ -26,7 +25,7 @@ def create_user_trans(id_attrs):
 def drop_user_trans(id_attrs):
   cluster = id_attrs['cluster']
   name = id_attrs['name']
-  return cluster.privileged_command_trans(
+  return cluster.command_trans(
       cmdline=['/usr/bin/dropuser', '-e',
         '--', name,
         ], )
@@ -35,14 +34,14 @@ class PgUser(Resource):
   def get_extra_deps(self):
     return (self.id_attrs['cluster'], )
 
-  def place_transitions(self, transition_graph):
-    # Can't read yet, so force it.
-    if self.wanted_attrs['present']:
-      trans = create_user_trans(self.id_attrs)
-    else:
-      trans = drop_user_trans(self.id_attrs)
-    transition_graph.add_transition(trans)
-    return trans
+  def place_transitions(self, tg):
+    # Caveat:
+    # The user could be dropped between place_transitions and realization.
+    p0, p1 = self.read_attrs()['present'], self.wanted_attrs['present']
+    if (p0, p1) == (False, True):
+      tg.add_transition(create_user_trans(self.id_attrs))
+    elif (p0, p1) == (True, False):
+      tg.add_transition(drop_user_trans(self.id_attrs))
 
 def register():
   restype = ResourceType('PgUser', PgUser,

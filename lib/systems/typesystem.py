@@ -95,7 +95,10 @@ class AttrType(object):
     Read the current state.
     """
 
-    return self.__reader(id)
+    v = self.__reader(id)
+    if not self.is_valid_value(v):
+      raise ValueError(v)
+    return v
 
 
 class SimpleType(object):
@@ -249,7 +252,7 @@ class ReadAttrs(object):
     self.__state_type = state_type
 
   def __getitem__(self, key):
-    attr = self.__state_type[key]
+    attr = self.__state_type.atypes[key]
     return attr.read_value(self.__id_attrs)
 
 
@@ -377,5 +380,6 @@ class Transition(object):
       raise RuntimeError('realize cannot be called more than once')
     results = self.realize_impl()
     self.__results_attrs = Attrs(self.__ttype.results_type, results)
+    return self.__results_attrs
 
 

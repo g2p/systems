@@ -26,8 +26,9 @@ class Command(Transition):
           'cmdline': AttrType(
             valid_condition=cls.is_valid_cmdline),
           'cmdline_input': AttrType(
+            # Node means keyboard input is possible.
             none_allowed=True,
-            # So we needn't bother with encodings
+            # str so we needn't bother with encodings
             pytype=str),
           'unless': AttrType(
             none_allowed=True,
@@ -38,6 +39,9 @@ class Command(Transition):
           'extra_env': AttrType(
             none_allowed=True,
             valid_condition=cls.is_valid_extra_env),
+          'redir_stdout': AttrType(
+            default_value=False,
+            pytype=bool),
           'expected_retcodes': AttrType(
             default_value=(0, ),
             valid_condition=cls.is_valid_expected_retcodes),
@@ -45,6 +49,10 @@ class Command(Transition):
         results_type={
           'retcode': AttrType(
             pytype=int,
+            ),
+          'stdout': AttrType(
+            pytype=str,
+            default_value='',
             ),
           })
     Registry.get_singleton().transition_types.register(cls.__restype)
@@ -108,22 +116,36 @@ class Command(Transition):
         return
 
     if self.instr_attrs['cmdline_input'] is None:
-      # Let stdin pass through
-      input_flag = None
+      stdin_flag = None
     else:
-      # We have a string to write
-      input_flag = subprocess.PIPE
+      stdin_flag = subprocess.PIPE
+
+    if self.instr_attrs['redir_stdout']:
+      stdout_flag = subprocess.PIPE
+    else:
+      stdout_flag = None
+
     p = subprocess.Popen(
         self.instr_attrs['cmdline'],
-        stdin=input_flag,
+        stdin=stdin_flag,
+        stdout=stdout_flag,
         preexec_fn=preexec_fn,
         env=env)
-    # Input may safely be None. Writes, waits until completion.
-    p.communicate(self.instr_attrs['cmdline_input'])
+
+    # Writes, waits until completion.
+    stdoutdata, stderrdata = p.communicate(self.instr_attrs['cmdline_input'])
+
+    if stdoutdata is None:
+      # redir_stdout is False
+      stdoutdata = ''
+
     if p.returncode not in self.instr_attrs['expected_retcodes']:
       raise subprocess.CalledProcessError(
           p.returncode, self.instr_attrs['cmdline'])
-    return { 'retcode': p.returncode, }
+    return {
+        'retcode': p.returncode,
+        'stdout': stdoutdata,
+        }
 
 def register():
   Command.register()

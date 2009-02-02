@@ -3,6 +3,7 @@
 from systems.dsl import resource, transition
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource, Attrs
+from systems.util.templates import build_and_render
 
 
 def extra_env(id_attrs):
@@ -30,18 +31,17 @@ class PgCluster(Resource):
     return (pkg, )
 
   def command_trans(self, **kwargs):
+    if 'username' not in kwargs:
+      # The default admin user on debian
+      kwargs['username'] = 'postgres'
+
     e = kwargs.get('extra_env', {})
     e.update(extra_env(self.id_attrs))
     kwargs['extra_env'] = e
+
     return transition('Command', **kwargs)
 
-  def privileged_command_trans(self, **kwargs):
-    if 'username' in kwargs:
-      raise ValueError
-    kwargs['username'] = 'postgres'
-    return self.command_trans(**kwargs)
-
-  def psql_eval_trans(self, sql):
+  def psql_eval_trans(self, sql, **kwargs):
     """
     No prepared statement, so make sure your SQL is injection-free.
     """
@@ -49,8 +49,22 @@ class PgCluster(Resource):
     if not isinstance(sql, str):
       raise TypeError
     return self.command_trans(
-        cmdline=['/usr/bin/psql', '-At1', '-f', '-', ], cmdline_input=sql)
+        cmdline=['/usr/bin/psql', '-At1', '-f', '-', ],
+        cmdline_input=sql,
+        **kwargs)
 
+  def check_existence(self, table, column, value):
+    sql = build_and_render("""
+      SELECT EXISTS(
+        SELECT * FROM "{{ table }}" WHERE "{{ column }}" = '{{ value }}'
+        )""",
+      table=table, column=column, value=value)
+    sql = sql.encode('utf8')
+    cmd = self.psql_eval_trans(sql, redir_stdout=True)
+    stdout = cmd.realize()['stdout'].strip()
+    assert stdout in ('t', 'f', )
+    exists = stdout == 't'
+    return exists
 
 def register():
   # Consider conninfo strings; problem is createuser doesn't support them.

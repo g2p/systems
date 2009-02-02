@@ -12,10 +12,9 @@ from systems.util.templates import build_and_render
 __all__ = ('register', )
 
 def read_present(id_attrs):
-  cluster = id_attrs['cluster']
+  cluster = id_attrs['user'].id_attrs['cluster']
   name = id_attrs['name']
-  # Tweak Command to get retval
-  # ['/usr/bin/psql', '-t', '-c', "SELECT COUNT(*) FROM pg_roles WHERE rolname = '$name'", '|', 'grep', '-q', '1', ],
+  return cluster.check_existence('pg_database', 'datname', name)
 
 def is_valid_dbname(name):
   # See the run-parts manpage for restrictions on cron file names.
@@ -27,7 +26,7 @@ def create_db_trans(id_attrs):
   cluster = user.id_attrs['cluster']
   name = id_attrs['name']
   username = user.id_attrs['name']
-  return cluster.privileged_command_trans(
+  return cluster.command_trans(
       cmdline=['/usr/bin/createdb', '-e',
         '--encoding', 'UTF8',
         '--owner', username,
@@ -38,7 +37,7 @@ def drop_db_trans(id_attrs):
   user = id_attrs['user']
   cluster = user.id_attrs['cluster']
   name = id_attrs['name']
-  return cluster.privileged_command_trans(
+  return cluster.command_trans(
       cmdline=['/usr/bin/dropdb', '-e',
         '--', name,
         ], )
@@ -68,12 +67,13 @@ class PgDatabase(Resource):
     return (user, cron_file)
 
   def place_transitions(self, transition_graph):
-    # Can't read yet, so force it.
-    if self.wanted_attrs['present']:
-      trans = create_db_trans(self.id_attrs)
-    else:
-      trans = drop_db_trans(self.id_attrs)
-    transition_graph.add_transition(trans)
+    # Caveat:
+    # The db could be dropped between place_transitions and realization.
+    p0, p1 = self.read_attrs()['present'], self.wanted_attrs['present']
+    if (p0, p1) == (False, True):
+      tg.add_transition(create_db_trans(self.id_attrs))
+    elif (p0, p1) == (True, False):
+      tg.add_transition(drop_db_trans(self.id_attrs))
 
 def register():
   restype = ResourceType('PgDatabase', PgDatabase,
