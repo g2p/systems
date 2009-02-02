@@ -25,8 +25,7 @@ ensure_resource(gc, 'AptitudePackage', name='python-networkx')
 ensure_resource(gc, 'User',
     name='zorglub', present=False, shell='/bin/true')
 
-c = resource('PgCluster')
-u = resource('PgUser', cluster=c, name='user-pfuuit')
+u = resource('PgUser', name='user-pfuuit')
 d = ensure_resource(gc, 'PgDatabase', user=u, name='db-pfuuit')
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):

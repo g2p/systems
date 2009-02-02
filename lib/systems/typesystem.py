@@ -313,6 +313,12 @@ class Resource(object):
     Prereq resources may depend on a parameter, or be implementation details.
 
     They are called before any transition placed with place_transitions.
+
+    Arbitrary limitations:
+    Can't add dependencies between those deps, since a flat list is returned.
+    This may be changed if it turns out to be a problem.
+    eg to distinguish impl details from requirements.
+    Impl details can be put using place_transitions however.
     """
 
     return ()

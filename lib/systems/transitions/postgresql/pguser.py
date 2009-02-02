@@ -2,7 +2,7 @@
 
 from pgcluster import PgCluster
 
-from systems.dsl import transition
+from systems.dsl import resource
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource, Attrs
 
@@ -48,6 +48,7 @@ def register():
   restype = ResourceType('PgUser', PgUser,
       id_type={
         'cluster': AttrType(
+          default_value=resource('PgCluster'),
           pytype=PgCluster),
         'name': AttrType(
           pytype=str),
