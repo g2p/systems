@@ -32,8 +32,8 @@ def drop_user_trans(id_attrs):
         ], )
 
 class PgUser(Resource):
-  def place_extra_deps(self, resource_graph):
-    resource_graph.add_dependency(self.id_attrs['cluster'], self)
+  def get_extra_deps(self):
+    return (self.id_attrs['cluster'], )
 
   def place_transitions(self, transition_graph):
     # Can't read yet, so force it.

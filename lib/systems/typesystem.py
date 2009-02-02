@@ -306,20 +306,21 @@ class Resource(object):
       return Attrs(self.__rtype.state_type, r)
     return self.__read_attrs
 
-  def place_extra_deps(self, resource_graph):
+  def get_extra_deps(self):
     """
-    Place resources that realize the resource,
-    or are prerequisistes to its realization.
+    List prerequisite resources.
+
+    Those may depend on a parameter, or be implementation details.
     """
 
-    # For resource-resource dependencies. May depend on a param.
-    pass
+    return ()
 
   def place_transitions(self, transition_graph):
     """
     Place transitions that realize the resource.
 
-    Consider using place_extra_deps when you call up other resources.
+    Consider overriding get_extra_deps when you call up other resources.
+    This leaves more room for scheduling.
     """
 
     # Only transitions can be evaluated, so put them as deps on the graph.

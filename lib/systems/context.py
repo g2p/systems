@@ -312,7 +312,7 @@ class Context(object):
           self.__resources.collect_resources(part, merged)
 
   def _extra_depends(self):
-    # Call place_extra_deps for all resources,
+    # Call get_extra_deps for all resources,
     # including those that were added by a previous call.
     seen = set()
     while True:
@@ -322,7 +322,9 @@ class Context(object):
         return
       for rid in fresh:
         r = self.__resources.resource_at(rid)
-        r.place_extra_deps(self.__resources)
+        for d in r.get_extra_deps():
+          self.__resources.add_resource(d)
+          self.__resources.add_dependency(d, r)
       seen.update(fresh)
 
   def _transitions_from_resources(self):

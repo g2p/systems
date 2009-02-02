@@ -4,7 +4,7 @@ import sys
 
 import systems.context
 import systems.transitions
-from systems.dsl import ensure_resource, ensure_transition
+from systems.dsl import resource, ensure_resource, ensure_transition
 from systems.util.templates import build_and_render
 
 gc = systems.context.global_context()
@@ -25,8 +25,8 @@ ensure_resource(gc, 'AptitudePackage', name='python-networkx')
 ensure_resource(gc, 'User',
     name='zorglub', present=False, shell='/bin/true')
 
-c = ensure_resource(gc, 'PgCluster')
-u = ensure_resource(gc, 'PgUser', cluster=c, name='user-pfuuit')
+c = resource('PgCluster')
+u = resource('PgUser', cluster=c, name='user-pfuuit')
 d = ensure_resource(gc, 'PgDatabase', user=u, name='db-pfuuit')
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):

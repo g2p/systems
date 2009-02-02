@@ -44,9 +44,7 @@ def drop_db_trans(id_attrs):
         ], )
 
 class PgDatabase(Resource):
-  def place_extra_deps(self, resource_graph):
-    resource_graph.add_dependency(self.id_attrs['user'], self)
-
+  def get_extra_deps(self):
     dbname = self.id_attrs['name']
     enable_backups = self.wanted_attrs['enable_backups']
     fname = '/etc/cron.daily/db-backup-' + dbname
@@ -64,8 +62,10 @@ class PgDatabase(Resource):
         path=fname,
         mode=0700,
         contents=code.encode('utf8'), )
-    resource_graph.add_resource(cron_file)
-    resource_graph.add_dependency(cron_file, self)
+
+    user = self.id_attrs['user']
+
+    return (user, cron_file)
 
   def place_transitions(self, transition_graph):
     # Can't read yet, so force it.

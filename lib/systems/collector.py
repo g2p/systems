@@ -47,7 +47,7 @@ class Aggregate(object):
   """
   Apes Resource somewhat.
 
-  place_extra_deps will not be called due to a sane stage system,
+  get_extra_deps will not be called due to a sane stage system,
   override place_transitions.
   """
 

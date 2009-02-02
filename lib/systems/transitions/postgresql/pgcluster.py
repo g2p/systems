@@ -22,13 +22,12 @@ class PgCluster(Resource):
   note those are not strictly a hostname or a port number.
   """
 
-  def place_extra_deps(self, resource_graph):
+  def get_extra_deps(self):
     # Also: pg_createcluster, pg_deletecluster
     present = self.wanted_attrs['present']
     pkg_state = { True: 'installed', False: 'purged', }[present]
     pkg = resource('AptitudePackage', name='postgresql')
-    resource_graph.add_resource(pkg)
-    resource_graph.add_dependency(pkg, self)
+    return (pkg, )
 
   def command_trans(self, **kwargs):
     e = kwargs.get('extra_env', {})
