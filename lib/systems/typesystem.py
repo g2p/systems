@@ -223,7 +223,6 @@ class Attrs(object):
     self.__valdict = stype.prepare_valdict(valdict)
 
   def _key(self):
-    # XXX In the "identify" use case, we need to name the type.
     return (self.__stype, frozenset(self.__valdict.iteritems()))
 
   def __hash__(self):
@@ -278,7 +277,7 @@ class Resource(object):
     return (self.__rtype.name, self.__id_attrs)
 
   def _key(self):
-    return (self.__rtype.name, self.__id_attrs, self.__wanted_attrs)
+    return (self.__rtype, self.__id_attrs, self.__wanted_attrs)
 
   def __cmp__(self, other):
     return -cmp(other, self._key())

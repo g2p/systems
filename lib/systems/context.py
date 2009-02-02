@@ -260,7 +260,7 @@ class Context(object):
 
   def _resolve_references(self):
     self.require_state('init')
-    # XXX Dropped for now.
+    # References were dropped for now. Reinstate them if a use case comes up.
 
   def _collect(self):
     # Collects compatible nodes into merged nodes.

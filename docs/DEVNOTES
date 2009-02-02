@@ -87,6 +87,10 @@ debuild --no-tgz-check -us -uc -i -I && scp ../python-systems_0.1_all.deb tefal.
 
 git grep -h -w -e import --and --not -e systems |sort -u
 
+=== Coverage
+
+sudo PYTHONPATH=lib python-coverage -x test/test_building.py; sudo chown $USER: .coverage; find lib -name \*.py -print0 |xargs -0 python-coverage -a
+
 === Troubleshooting
 
 ==== Python tracing
