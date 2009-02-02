@@ -23,12 +23,11 @@ ensure_resource(gc, 'File',
     contents=text.encode('utf8'))
 ensure_resource(gc, 'AptitudePackage', name='python-networkx')
 ensure_resource(gc, 'User',
-    name='zorglub', state='absent', shell='/bin/true')
+    name='zorglub', present=False, shell='/bin/true')
 
 c = ensure_resource(gc, 'PgCluster')
 u = ensure_resource(gc, 'PgUser', cluster=c, name='user-pfuuit')
 d = ensure_resource(gc, 'PgDatabase', user=u, name='db-pfuuit')
-b = ensure_resource(gc, 'PgDbBackup', database=d)
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   with open(pub_file) as f:

@@ -5,9 +5,6 @@ from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource, Attrs
 
 
-def is_valid_state(state):
-  return state in ('present', 'absent', )
-
 def extra_env(id_attrs):
   pg_host = id_attrs['pg_host']
   pg_port = id_attrs['pg_port']
@@ -27,8 +24,8 @@ class PgCluster(Resource):
 
   def place_extra_deps(self, resource_graph):
     # Also: pg_createcluster, pg_deletecluster
-    state = self.wanted_attrs['state']
-    pkg_state = { 'present': 'installed', 'absent': 'purged', }[state]
+    present = self.wanted_attrs['present']
+    pkg_state = { True: 'installed', False: 'purged', }[present]
     pkg = resource('AptitudePackage', name='postgresql')
     resource_graph.add_resource(pkg)
     resource_graph.add_dependency(pkg, self)
@@ -70,9 +67,9 @@ def register():
         pytype=int),
       },
     state_type={
-      'state': AttrType(
-        default_value='present',
-        valid_condition=is_valid_state),
+      'present': AttrType(
+        default_value=True,
+        pytype=bool),
       })
   Registry.get_singleton().resource_types.register(restype)
 

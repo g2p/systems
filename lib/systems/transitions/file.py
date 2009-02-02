@@ -31,10 +31,10 @@ class File(Resource):
             reader=cls.read_contents,
             # A byte string, no encoding
             pytype=str),
-          'state': AttrType(
-            default_value='present',
-            reader=cls.read_state,
-            valid_condition=cls.is_valid_state),
+          'present': AttrType(
+            default_value=True,
+            pytype=bool,
+            reader=cls.read_present),
           'mode': AttrType(
             default_value=0600,
             reader=cls.read_mode,
@@ -57,21 +57,14 @@ class File(Resource):
       return f.read()
 
   @classmethod
-  def is_valid_state(cls, state):
-    return state in ('present', 'absent', )
-
-  @classmethod
-  def read_state(cls, id_attrs):
+  def read_present(cls, id_attrs):
     """
-    The state of the file: present or absent.
+    Whether the file must exist.
     """
 
     path = id_attrs['path']
     # Broken symlinks still are 'present'
-    if os.path.lexists(path):
-      return 'present'
-    else:
-      return 'absent'
+    return os.path.lexists(path)
 
   @classmethod
   def is_valid_mode(cls, mode):
@@ -94,14 +87,15 @@ class File(Resource):
   def realize(self):
     # Don't let files be accessible between creation and permission setting.
     os.umask(0077)
-    s0, s1 = self.read_state(self.id_attrs), self.wanted_attrs['state']
+    present0 = self.read_present(self.id_attrs)
+    present1 = self.wanted_attrs['present']
 
-    if s1 == 'present':
+    if present1:
       # create or update
       with open(self.id_attrs['path'], 'wb') as f:
         f.write(self.wanted_attrs['contents'])
         fchmod(f.fileno(), self.wanted_attrs['mode'])
-    elif s0 == 'present':
+    elif present0:
       # delete
       os.unlink(self.id_attrs['path'])
 

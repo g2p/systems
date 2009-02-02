@@ -26,9 +26,9 @@ class User(Resource):
             valid_condition=cls.is_valid_username),
           },
         state_type={
-          'state': AttrType(
-            default_value='present',
-            valid_condition=cls.is_valid_state),
+          'present': AttrType(
+            default_value=True,
+            pytype=bool),
           'home': AttrType(
             none_allowed=True,
             valid_condition=cls.is_valid_home),
@@ -44,10 +44,6 @@ class User(Resource):
     return bool(re.match('^[a-z_][a-z0-9_-]*[$]?$', name))
 
   @classmethod
-  def is_valid_state(cls, state):
-    return state in ('present', 'absent', )
-
-  @classmethod
   def is_valid_home(cls, home):
     return home is None or bool(re.match('^/[/a-z0-9_-]*$', home))
 
@@ -60,15 +56,15 @@ class User(Resource):
     try:
       p = pwd.getpwnam(name)
     except KeyError:
-      state = 'absent'
+      present = False
       home = None
       shell = None
     else:
-      state = 'present'
+      present = True
       home = p.pw_dir
       shell = p.pw_shell
     return {
-        'state': state,
+        'present': present,
         'home': home,
         'shell': shell,
         }
@@ -79,19 +75,19 @@ class User(Resource):
     if state0 == state1:
       return
 
-    s0, s1 = state0['state'], state1['state']
-    if (s0, s1) == ('absent', 'absent'):
+    p0, p1 = state0['present'], state1['present']
+    if (p0, p1) == (False, False):
       return
-    elif (s0, s1) == ('present', 'present'):
+    elif (p0, p1) == (True, True):
       cmdline = ['/usr/sbin/usermod', ]
-    elif (s0, s1) == ('absent', 'present'):
+    elif (p0, p1) == (False, True):
       cmdline = ['/usr/sbin/adduser', '--system', '--disabled-password', ]
-    elif (s0, s1) == ('present', 'absent'):
+    elif (p0, p1) == (True, False):
       cmdline = ['/usr/sbin/deluser', ]
     else:
       assert False
 
-    if s1 == 'present':
+    if p1:
       if self.wanted_attrs['home'] is not None:
         cmdline.extend(['--home', self.wanted_attrs['home']])
       if self.wanted_attrs['shell'] is not None:

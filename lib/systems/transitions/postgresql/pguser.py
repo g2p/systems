@@ -8,14 +8,11 @@ from systems.typesystem import AttrType, ResourceType, Resource, Attrs
 
 __all__ = ('register', )
 
-def read_state(id_attrs):
+def read_present(id_attrs):
   cluster = id_attrs['cluster']
   name = id_attrs['name']
   # Tweak Command to get retval
   # ['/usr/bin/psql', '-t', '-c', "SELECT COUNT(*) FROM pg_roles WHERE rolname = '$name'", '|', 'grep', '-q', '1', ],
-
-def is_valid_state(state):
-  return state in ('present', 'absent', )
 
 def create_user_trans(id_attrs):
   cluster = id_attrs['cluster']
@@ -40,7 +37,7 @@ class PgUser(Resource):
 
   def place_transitions(self, transition_graph):
     # Can't read yet, so force it.
-    if self.wanted_attrs['state'] == 'present':
+    if self.wanted_attrs['present']:
       trans = create_user_trans(self.id_attrs)
     else:
       trans = drop_user_trans(self.id_attrs)
@@ -56,10 +53,10 @@ def register():
           pytype=str),
         },
       state_type={
-        'state': AttrType(
-          default_value='present',
-          reader=read_state,
-          valid_condition=is_valid_state),
+        'present': AttrType(
+          default_value=True,
+          pytype=bool,
+          reader=read_present),
         })
   Registry.get_singleton().resource_types.register(restype)
 
