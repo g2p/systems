@@ -310,7 +310,9 @@ class Resource(object):
     """
     List prerequisite resources.
 
-    Those may depend on a parameter, or be implementation details.
+    Prereq resources may depend on a parameter, or be implementation details.
+
+    They are called before any transition placed with place_transitions.
     """
 
     return ()
@@ -320,7 +322,8 @@ class Resource(object):
     Place transitions that realize the resource.
 
     Consider overriding get_extra_deps when you call up other resources.
-    This leaves more room for scheduling.
+
+    These transitions are realised after any depends, including get_extra_deps.
     """
 
     # Only transitions can be evaluated, so put them as deps on the graph.
