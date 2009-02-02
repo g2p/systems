@@ -47,7 +47,7 @@ class AptitudePackage(Resource):
     if version is None:
       return True
     # From lintian's _valid_version
-    # XXX can pass dashes
+    # XXX can pass dashes. Check in aptitude source code if it matches.
     # http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Version
     return bool(
         re.match('^(\d+:)?([-\.+:~a-z0-9]+?)(-[\.+~a-z0-9]+)?$', version))

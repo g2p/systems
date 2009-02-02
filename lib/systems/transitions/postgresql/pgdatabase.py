@@ -78,6 +78,8 @@ class PgDatabase(Resource):
 def register():
   restype = ResourceType('PgDatabase', PgDatabase,
       id_type={
+        # XXX User should probably be moved to state_type,
+        # since the database may exist without the desired owner.
         'user': AttrType(
           pytype=PgUser),
         'name': AttrType(

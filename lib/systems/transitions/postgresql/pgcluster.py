@@ -54,6 +54,7 @@ class PgCluster(Resource):
         **kwargs)
 
   def check_existence(self, table, column, value):
+    # XXX quoting. Jinja2 doesn't have the relevant filters.
     sql = build_and_render("""
       SELECT EXISTS(
         SELECT * FROM "{{ table }}" WHERE "{{ column }}" = '{{ value }}'
