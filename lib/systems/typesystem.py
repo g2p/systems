@@ -309,30 +309,9 @@ class Resource(object):
       return Attrs(self.__rtype.state_type, r)
     return self.__read_attrs
 
-  def get_extra_deps(self):
+  def expand_into(self, resource_graph):
     """
-    List prerequisite resources.
-
-    Prereq resources may depend on a parameter, or be implementation details.
-
-    They are called before any transition placed with place_transitions.
-
-    Arbitrary limitations:
-    Can't add dependencies between those deps, since a flat list is returned.
-    This may be changed if it turns out to be a problem.
-    eg to distinguish impl details from requirements.
-    Impl details can be put using place_transitions however.
-    """
-
-    return ()
-
-  def place_transitions(self, transition_graph):
-    """
-    Place transitions that realize the resource.
-
-    Consider overriding get_extra_deps when you call up other resources.
-
-    These transitions are realised after any depends, including get_extra_deps.
+    Place transitions and resources that realize the resource.
     """
 
     # Only transitions can be evaluated, so put them as deps on the graph.

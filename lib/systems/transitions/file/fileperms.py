@@ -19,7 +19,7 @@ def is_valid_path(path):
 def is_valid_username(username):
   try:
     pwd.getpwnam(username)
-  except OSError:
+  except KeyError:
     return False
   else:
     return True
@@ -27,7 +27,7 @@ def is_valid_username(username):
 def is_valid_groupname(groupname):
   try:
     grp.getgrnam(groupname)
-  except OSError:
+  except KeyError:
     return False
   else:
     return True
@@ -74,9 +74,9 @@ class FilePermsMixin(object):
   Mixin for plain files, directories and symlinks.
   """
 
-  def fp_place_transitions(self, transition_graph):
+  def fp_expand_into(self, rg):
     code = transition('PythonCode', function=self._realize)
-    transition_graph.add_transition(code)
+    rg.add_transition(code)
 
   def _realize(self):
     # We should pass around file-descriptors to be safe.

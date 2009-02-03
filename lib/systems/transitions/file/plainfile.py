@@ -31,9 +31,9 @@ class PlainFile(fileperms.FilePermsMixin, Resource):
   A regular plain file in the filesystem.
   """
 
-  def place_transitions(self, tg):
+  def expand_into(self, rg):
     # Had to rename it to avoid a clash.
-    return self.fp_place_transitions(tg)
+    return self.fp_expand_into(rg)
 
   def create(self):
     with open(self.id_attrs['path'], 'wb') as f:

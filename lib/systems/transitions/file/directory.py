@@ -25,9 +25,9 @@ class Directory(fileperms.FilePermsMixin, Resource):
   A directory in the filesystem.
   """
 
-  def place_transitions(self, tg):
+  def expand_into(self, rg):
     # Had to rename it to avoid a clash.
-    return self.fp_place_transitions(tg)
+    return self.fp_expand_into(rg)
 
   def create(self):
     path = self.id_attrs['path']

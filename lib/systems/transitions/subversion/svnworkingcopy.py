@@ -15,18 +15,19 @@ class SvnWorkingCopy(Resource):
   as the owner of the desired location.
   """
 
-  def get_extra_deps(self):
+  def expand_into(self, rg):
     location = self.id_attrs['location']
     # An alternative to valid_condition
     if not location.wanted_attrs['present']:
       raise ValueError
-    return (resource('AptitudePackage', name='subversion'), location)
 
-  def place_transitions(self, tg):
+    pkg = rg.add_resource(resource('AptitudePackage', name='subversion'))
+    location = rg.add_resource(location)
+
     repo_url = self.wanted_attrs['url']
-    loc = self.id_attrs['location']
-    path = loc.id_attrs['path']
-    owner = loc.wanted_attrs['owner']
+    path = location.id_attrs['path']
+    owner = location.wanted_attrs['owner']
+
     co = transition('Command',
         username=owner,
         cmdline=['/usr/bin/svn', 'checkout', '--non-interactive', '--force',
@@ -35,9 +36,12 @@ class SvnWorkingCopy(Resource):
         username=owner,
         cmdline=['/usr/bin/svn', 'update', '--non-interactive', '--force',
           '--', path, ])
-    tg.add_transition(co)
-    tg.add_transition(up)
-    tg.add_transition_dependency(co, up)
+
+    rg.add_transition(co)
+    rg.add_transition(up)
+    rg.add_dependency(pkg, co)
+    rg.add_dependency(location, co)
+    rg.add_dependency(co, up)
 
 
 def register():

@@ -4,7 +4,7 @@ from itertools import ifilter
 
 import networkx as NX
 
-from systems.collector import Aggregate
+from systems.collector import Aggregate, CollectibleResource
 from systems.registry import Registry
 from systems.typesystem import Resource, Transition, ResourceRef
 
@@ -14,12 +14,20 @@ __all__ = ('Context', 'global_context', )
 class SentinelNode(object):
   pass
 
-class TransitionGraph(object):
+class ResInGraph(object):
+  def __init__(self, res, before, after):
+    self._res = res
+    self._before = before
+    self._after = after
+    self._expanded = False
+
+class ResourceGraph(object):
   """
-  A dependency graph.
+  A graph of resources and transitions linked by dependencies.
+
+  Resources are positioned as two sentinels in the transition graph.
 
   Invariant: directed, acyclic.
-  Abstract base class; does not support adding nodes.
   """
 
   def __init__(self):
@@ -27,6 +35,8 @@ class TransitionGraph(object):
     self._first = SentinelNode()
     self._last = SentinelNode()
     self._graph.add_edge(self._first, self._last)
+    # Stores ResInGraph entries.
+    self.__dict = {}
 
   def add_transition_dependency(self, node0, node1):
     if not isinstance(node0, (Transition, SentinelNode)):
@@ -60,11 +70,6 @@ class TransitionGraph(object):
       raise TypeError(node, SentinelNode)
     return self._add_node(node)
 
-  def iter_transitions(self):
-    return ifilter(
-        lambda n: not isinstance(n, SentinelNode),
-        self._graph.nodes_iter())
-
   def sorted_transitions(self):
     return [n for n in NX.topological_sort(self._graph)
         if not isinstance(n, SentinelNode)]
@@ -74,25 +79,6 @@ class TransitionGraph(object):
       raise TypeError(transition, Transition)
     return self._add_node(transition)
 
-
-class ResInGraph(object):
-  def __init__(self, res, before, after):
-    self._res = res
-    self._before = before
-    self._after = after
-
-
-class ResourceGraph(TransitionGraph):
-  """
-  A graph of resources and transitions.
-
-  Resources have a position in the transition graph.
-  """
-
-  def __init__(self):
-    super(ResourceGraph, self).__init__()
-    self.__dict = {}
-
   def resource_at(self, key):
     return self.__dict[key]._res
 
@@ -100,11 +86,20 @@ class ResourceGraph(TransitionGraph):
     for rig in self.__dict.itervalues():
       yield rig._res
 
+  def iter_expandables(self):
+    for rig in self.__dict.itervalues():
+      if rig._expanded:
+        continue
+      res = rig._res
+      if isinstance(res, CollectibleResource):
+        continue
+      yield rig._res
+
   def add_resource(self, resource):
     """
     Add a resource.
 
-    If an identical resource exists, nothing is done.
+    If an identical resource exists, it is returned.
     """
 
     if not isinstance(resource, Resource):
@@ -149,7 +144,7 @@ class ResourceGraph(TransitionGraph):
 
   def collect_resources(self, r0s, r1):
     """
-    Replace an iterable of resources with one resource.
+    Replace an iterable of resources with one new resource.
 
     May break the acyclic invariant, caveat emptor.
     """
@@ -158,15 +153,18 @@ class ResourceGraph(TransitionGraph):
     # For our use case (collectors), we could allow paths provided they are
     # internal to r0s. This introduces self-loops that we would then remove.
 
+    if r1.identity in self.__dict:
+      raise ValueError
     for r0 in r0s:
       if not r0.identity in self.__dict:
         raise KeyError(r0)
-    # Don't accept identification here (for now).
-    if r1.identity in self.__dict:
-      raise RuntimeError
+      if r0.identity == r1.identity:
+        raise ValueError(r0)
+
     r1 = self._add_resource_or_aggregate(r1)
     before1 = self.__dict[r1.identity]._before
     after1 = self.__dict[r1.identity]._after
+
     for r0 in r0s:
       before0 = self.__dict[r0.identity]._before
       after0 = self.__dict[r0.identity]._after
@@ -174,35 +172,60 @@ class ResourceGraph(TransitionGraph):
         self._graph.add_edge(pred, before1)
       for succ in self._graph.successors_iter(after0):
         self._graph.add_edge(after1, succ)
+
+      self._graph.delete_node(before0)
+      self._graph.delete_node(after0)
       del self.__dict[r0.identity]
 
     if not NX.is_directed_acyclic_graph(self._graph):
       # Can't undo. Invariant will stay broken.
       raise ValueError('Dependency graph has cycles')
 
-  def resource_to_transitions(self, res, transition_graph):
+  def expand_resource(self, res):
     """
-    Replace res by a small transition graph.
+    Replace res by a small resource graph.
 
-    The transition_graph is inserted in the main transition graph
+    The resource_graph is inserted in the main graph
     between the sentinels that represent the resource.
+
     """
 
-    if not isinstance(transition_graph, TransitionGraph):
-      raise TypeError
     if not res.identity in self.__dict:
       raise KeyError(res)
+    if self.__dict[res.identity]._expanded:
+      return
+
+    resource_graph = ResourceGraph()
+    res.expand_into(resource_graph)
+
     # Do not skip sentinels.
-    for n in transition_graph._graph.nodes_iter():
+    for n in resource_graph._graph.nodes_iter():
       self._add_node(n)
-    for (n0, n1) in transition_graph._graph.edges_iter():
+    for (n0, n1) in resource_graph._graph.edges_iter():
       self.add_dependency(n0, n1)
-    before = self.__dict[res.identity]._before
-    after = self.__dict[res.identity]._after
-    self.add_dependency(before, transition_graph._first)
-    self.add_dependency(transition_graph._last, after)
-    # Modifing an iterated dict is a bad idea
-    #del self.__dict[res.identity]
+
+    for (id, rig) in resource_graph.__dict.iteritems():
+      assert not rig._expanded
+      if id in self.__dict:
+        # Identification
+        rig1 = self.__dict[id]
+        for pred in self._graph.predecessors_iter(rig._before):
+          self._graph.add_edge(pred, rig1._before)
+        for succ in self._graph.successors_iter(rig._after):
+          self._graph.add_edge(rig1._after, succ)
+        self._graph.delete_node(rig._before)
+        self._graph.delete_node(rig._after)
+        if not NX.is_directed_acyclic_graph(self._graph):
+          raise RuntimeError('Identification broke the invariant')
+      else:
+        self.__dict[id] = rig
+
+    rig = self.__dict[res.identity]
+    self.add_dependency(rig._before, resource_graph._first)
+    self.add_dependency(resource_graph._last, rig._after)
+    # Do not delete; we must still be able to identify
+    # to avoid redundant expansion.
+    self.__dict[res.identity]._expanded = True
 
 
 class Context(object):
@@ -252,10 +275,8 @@ class Context(object):
       return
     self.require_state('init')
     # Order is important
-    self._extra_depends()
+    self._expand()
     self._collect()
-    self._resolve_references()
-    self._transitions_from_resources()
     self.__state = 'frozen'
 
   def _resolve_references(self):
@@ -306,32 +327,24 @@ class Context(object):
 
         # Let the collector handle the rest
         for part in partition:
-          if len(part) <= 1:
+          if not bool(part):
+            # Test for emptiness.
+            # Aggregate even singletons.
             continue
           merged = collector.collect(part)
           self.__resources.collect_resources(part, merged)
 
-  def _extra_depends(self):
-    # Call get_extra_deps for all resources,
+  def _expand(self):
+    # Call expand_resource for all resources,
     # including those that were added by a previous call.
-    seen = set()
     while True:
-      all = set(r.identity for r in self.__resources.iter_resources())
-      fresh = all.difference(seen)
+      fresh = set(r.identity
+          for r in self.__resources.iter_expandables())
       if bool(fresh) == False: # Test for emptiness
         return
       for rid in fresh:
         r = self.__resources.resource_at(rid)
-        for d in r.get_extra_deps():
-          self.__resources.add_resource(d)
-          self.__resources.add_dependency(d, r)
-      seen.update(fresh)
-
-  def _transitions_from_resources(self):
-    for r in self.__resources.iter_resources():
-      tg = TransitionGraph()
-      r.place_transitions(tg)
-      self.__resources.resource_to_transitions(r, tg)
+        self.__resources.expand_resource(r)
 
   def realize(self):
     """

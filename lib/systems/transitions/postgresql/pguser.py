@@ -9,9 +9,6 @@ from systems.typesystem import AttrType, ResourceType, Resource, Attrs
 __all__ = ('register', )
 
 
-def is_valid_cluster(cluster):
-  return cluster.wanted_attrs['present'] is True
-
 def read_present(id_attrs):
   cluster = id_attrs['cluster']
   name = id_attrs['name']
@@ -35,24 +32,27 @@ def drop_user_trans(id_attrs):
         ], )
 
 class PgUser(Resource):
-  def get_extra_deps(self):
-    return (self.id_attrs['cluster'], )
-
-  def place_transitions(self, tg):
-    # Caveat:
-    # The user could be dropped between place_transitions and realization.
+  def expand_into(self, rg):
     p0, p1 = self.read_attrs()['present'], self.wanted_attrs['present']
     if (p0, p1) == (False, True):
-      tg.add_transition(create_user_trans(self.id_attrs))
+      tr = rg.add_transition(create_user_trans(self.id_attrs))
     elif (p0, p1) == (True, False):
-      tg.add_transition(drop_user_trans(self.id_attrs))
+      tr = rg.add_transition(drop_user_trans(self.id_attrs))
+    else:
+      tr = None
+
+    if tr is not None:
+      cluster = self.id_attrs['cluster']
+      if not cluster.wanted_attrs['present']:
+        raise ValueError
+      rg.add_resource(cluster)
+      rg.add_dependency(cluster, tr)
 
 def register():
   restype = ResourceType('PgUser', PgUser,
       id_type={
         'cluster': AttrType(
           default_value=resource('PgCluster'),
-          valid_condition=is_valid_cluster,
           pytype=PgCluster),
         'name': AttrType(
           pytype=str),

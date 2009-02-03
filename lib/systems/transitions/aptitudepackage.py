@@ -3,15 +3,15 @@ import re
 import os
 import subprocess
 
-from systems.collector import Collector, Aggregate
+from systems.collector import Collector, Aggregate, CollectibleResource
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource
+from systems.typesystem import AttrType, ResourceType
 from systems.dsl import transition
 
 __all__ = ('register', )
 
 
-class AptitudePackage(Resource):
+class AptitudePackage(CollectibleResource):
   """
   A debian package, managed by aptitude.
 
@@ -75,9 +75,6 @@ class AptitudePackage(Resource):
         'uninstalled': '-', 'held': '=', }[state]
     return r
 
-  def place_transitions(self, transition_graph):
-    return AptitudePackages([self]).place_transitions(transition_graph)
-
 
 class AptitudePackages(Aggregate):
   def __init__(self, packages):
@@ -92,14 +89,13 @@ class AptitudePackages(Aggregate):
 
     return [p.to_aptitude_string() for p in self.__packages]
 
-  def place_transitions(self, transition_graph):
+  def expand_into(self, rg):
     cmdline=['/usr/bin/aptitude', 'install', '-y', '--', ]
     cmdline.extend(self.to_aptitude_list())
     cmd = transition('Command',
         extra_env={ 'DEBIAN_FRONTEND': 'noninteractive', },
         cmdline=cmdline)
-    transition_graph.add_transition(cmd)
-    return cmd
+    rg.add_transition(cmd)
 
 
 class AptitudePackageCollector(Collector):

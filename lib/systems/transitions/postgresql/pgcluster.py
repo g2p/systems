@@ -23,13 +23,11 @@ class PgCluster(Resource):
   note those are not strictly a hostname or a port number.
   """
 
-  def get_extra_deps(self):
+  def expand_into(self, rg):
     # Also: pg_createcluster, pg_deletecluster
-    present = self.wanted_attrs['present']
-    if present:
-      return (resource('AptitudePackage', name='postgresql'), )
-    else:
-      return ()
+    if not self.wanted_attrs['present']:
+      return
+    rg.add_resource(resource('AptitudePackage', name='postgresql'))
 
   def command_trans(self, **kwargs):
     if 'username' not in kwargs:

@@ -35,8 +35,10 @@ class Command(Transition):
             valid_condition=cls.is_valid_cmdline),
           'username': AttrType(
             none_allowed=True,
-            pytype=str,
-            valid_condition=cls.is_valid_username),
+            # Commented since some users are created after validation.
+            # Passing User deps would be better.
+            #valid_condition=cls.is_valid_username,
+            pytype=str),
           'extra_env': AttrType(
             none_allowed=True,
             valid_condition=cls.is_valid_extra_env),
@@ -62,7 +64,7 @@ class Command(Transition):
   def is_valid_username(cls, username):
     try:
       pwd.getpwnam(username)
-    except OSError:
+    except KeyError:
       return False
     else:
       return True

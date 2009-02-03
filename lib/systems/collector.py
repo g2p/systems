@@ -1,6 +1,7 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 from systems.util.datatypes import Named
+from systems.typesystem import Resource
 
 
 class Collector(Named):
@@ -43,16 +44,24 @@ class Collector(Named):
     raise NotImplementedError('collect')
 
 
+class CollectibleResource(Resource):
+  """
+  A marker class. Those will not be expanded.
+  """
+
+  def expand_into(self, resource_graph):
+    # Collectible resources are collected, never expanded.
+    raise RuntimeError
+
 class Aggregate(object):
   """
   Apes Resource somewhat.
-
-  get_extra_deps will not be called due to a sane stage system,
-  override place_transitions.
   """
 
-  def place_transitions(self, transition_graph):
+  def expand_into(self, resource_graph):
     # Override this.
+    # XXX Caveat:
+    # It might be a bad idea to add resources instead of just transitions.
     raise NotImplementedError
 
   @property

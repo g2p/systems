@@ -69,7 +69,7 @@ class User(Resource):
         'shell': shell,
         }
 
-  def place_transitions(self, transition_graph):
+  def expand_into(self, rg):
     state0 = self.read_attrs()
     state1 = self.wanted_attrs
     if state0 == state1:
@@ -95,8 +95,7 @@ class User(Resource):
 
     cmdline.extend(['--', self.id_attrs['name']])
     cmd = transition('Command', cmdline=cmdline)
-    transition_graph.add_transition(cmd)
-    return cmd
+    rg.add_transition(cmd)
 
 def register():
   User.register()
