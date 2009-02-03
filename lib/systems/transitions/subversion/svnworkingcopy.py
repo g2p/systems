@@ -17,6 +17,7 @@ class SvnWorkingCopy(Resource):
 
   def get_extra_deps(self):
     location = self.id_attrs['location']
+    # An alternative to valid_condition
     if not location.wanted_attrs['present']:
       raise ValueError
     return (resource('AptitudePackage', name='subversion'), location)
