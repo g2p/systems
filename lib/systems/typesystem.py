@@ -221,7 +221,7 @@ class Attrs(object):
 
   def __init__(self, stype, valdict):
     if not isinstance(stype, SimpleType):
-      raise TypeError
+      raise TypeError(stype, SimpleType)
     self.__stype = stype
     self.__valdict = stype.prepare_valdict(valdict)
 

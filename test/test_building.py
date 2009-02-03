@@ -21,15 +21,16 @@ ensure_resource(gc, 'PlainFile',
     path='/tmp/testfile',
     mode=0644,
     contents=text.encode('utf8'))
-ensure_resource(gc, 'Directory',
-    path='/tmp/testdir',
-    mode=0755)
 ensure_resource(gc, 'AptitudePackage', name='python-networkx')
 ensure_resource(gc, 'User',
     name='zorglub', present=False, shell='/bin/true')
 
 u = resource('PgUser', name='user-pfuuit')
 d = ensure_resource(gc, 'PgDatabase', owner=u, name='db-pfuuit')
+
+ensure_resource(gc, 'SvnWorkingCopy',
+    location=resource('Directory', path='/tmp/django-queue-service', mode=0755),
+    url='http://django-queue-service.googlecode.com/svn/trunk/')
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
   with open(pub_file) as f:

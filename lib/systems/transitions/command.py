@@ -113,7 +113,10 @@ class Command(Transition):
           self.instr_attrs['unless'],
           preexec_fn=preexec_fn,
           env=env) == 0:
-        return
+        return {
+            'retcode': 0,
+            'stdout': '',
+            }
 
     if self.instr_attrs['cmdline_input'] is None:
       stdin_flag = None

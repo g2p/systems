@@ -85,7 +85,7 @@ def register():
           pytype=bool,
           reader=read_present),
         'mode': AttrType(
-          default_value=0600,
+          default_value=0700,
           reader=read_mode,
           valid_condition=is_valid_mode),
         })

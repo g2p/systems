@@ -11,8 +11,8 @@ def register():
   postgresql.register()
   import pythoncode
   pythoncode.register()
-  #import subversion
-  #subversion.register()
+  import subversion
+  subversion.register()
   import user
   user.register()
 
