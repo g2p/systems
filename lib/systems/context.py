@@ -86,14 +86,24 @@ class ResourceGraph(object):
     for rig in self.__dict.itervalues():
       yield rig._res
 
-  def iter_expandables(self):
+  def _iter_expandables(self):
     for rig in self.__dict.itervalues():
-      if rig._expanded:
-        continue
-      res = rig._res
-      if isinstance(res, CollectibleResource):
-        continue
-      yield rig._res
+      if not rig._expanded:
+        yield rig._res
+
+  def iter_expandable_resources(self):
+    for res in self._iter_expandables():
+      if not isinstance(res, CollectibleResource):
+        yield res
+
+  def iter_expandable_aggregates(self):
+    for res in self._iter_expandables():
+      if isinstance(res, Aggregate):
+        yield res
+
+  def has_expandables(self):
+    l = [rig for rig in self.__dict.itervalues() if not rig._expanded]
+    return bool(l) # Tests for emptiness
 
   def add_resource(self, resource):
     """
@@ -193,7 +203,7 @@ class ResourceGraph(object):
     if not res.identity in self.__dict:
       raise KeyError(res)
     if self.__dict[res.identity]._expanded:
-      return
+      raise RuntimeError
 
     resource_graph = ResourceGraph()
     res.expand_into(resource_graph)
@@ -277,6 +287,7 @@ class Context(object):
     # Order is important
     self._expand()
     self._collect()
+    self._expand_aggregates()
     self.__state = 'frozen'
 
   def _resolve_references(self):
@@ -338,13 +349,19 @@ class Context(object):
     # Call expand_resource for all resources,
     # including those that were added by a previous call.
     while True:
-      fresh = set(r.identity
-          for r in self.__resources.iter_expandables())
+      fresh = set(r
+          for r in self.__resources.iter_expandable_resources())
       if bool(fresh) == False: # Test for emptiness
         return
-      for rid in fresh:
-        r = self.__resources.resource_at(rid)
+      for r in fresh:
         self.__resources.expand_resource(r)
+
+  def _expand_aggregates(self):
+    for a in self.__resources.iter_expandable_aggregates():
+      self.__resources.expand_resource(a)
+    # The rule is that aggregates can only expand into transitions.
+    if self.__resources.has_expandables():
+      raise RuntimeError
 
   def realize(self):
     """

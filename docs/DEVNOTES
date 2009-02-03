@@ -89,7 +89,7 @@ git grep -h -w -e import --and --not -e systems |sort -u
 
 === Coverage
 
-sudo PYTHONPATH=lib python-coverage -x test/test_building.py; sudo chown $USER: .coverage; find lib -name \*.py -print0 |xargs -0 python-coverage -a
+# dropdb db-pfuuit; dropuser user-pfuuit; sudo sh -c "deluser git; rm -rf /tmp/testfile /tmp/django-queue-service /var/git; PYTHONPATH=lib python-coverage -x test/test_building.py; PYTHONPATH=lib python-coverage -x test/test_building.py; chown $USER: .coverage"; find lib -name \*.py -print0 |xargs -0 python-coverage -a
 
 === Troubleshooting
 
