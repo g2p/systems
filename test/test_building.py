@@ -32,7 +32,8 @@ ensure_resource(gc, 'SvnWorkingCopy',
     location=resource('Directory',
       path='/tmp/django-queue-service',
       mode=0755,
-      owner='nobody'),
+      owner='nobody',
+      group='nogroup'),
     url='http://django-queue-service.googlecode.com/svn/trunk/')
 
 def test_gitosis(pub_file, user_name='git', user_home='/var/git'):

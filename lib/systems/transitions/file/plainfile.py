@@ -69,7 +69,7 @@ def register():
           reader=read_present),
         'mode': AttrType(
           # Beware: octal is error-prone
-          default_value=0700,
+          default_value=0600,
           reader=fileperms.read_mode,
           valid_condition=fileperms.is_valid_mode),
         'owner': AttrType(
