@@ -63,7 +63,7 @@ class PgDatabase(Resource):
     '''
     code = build_and_render(template, dbname=dbname)
 
-    cron_file = resource('File',
+    cron_file = resource('PlainFile',
         present=enable_backups,
         path=fname,
         mode=0700,

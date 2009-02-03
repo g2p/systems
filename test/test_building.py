@@ -17,10 +17,13 @@ ensure_transition(gc, 'PythonCode',
 
 text = build_and_render('Hello {{ name }}!\n', name='Jane Doe')
 
-ensure_resource(gc, 'File',
+ensure_resource(gc, 'PlainFile',
     path='/tmp/testfile',
     mode=0644,
     contents=text.encode('utf8'))
+ensure_resource(gc, 'Directory',
+    path='/tmp/testdir',
+    mode=0755)
 ensure_resource(gc, 'AptitudePackage', name='python-networkx')
 ensure_resource(gc, 'User',
     name='zorglub', present=False, shell='/bin/true')

@@ -46,7 +46,7 @@ def read_mode(id):
   return stat.S_IMODE(os.lstat(path).st_mode)
 
 
-class File(Resource):
+class PlainFile(Resource):
   """
   A file in the filesystem.
   """
@@ -72,7 +72,7 @@ class File(Resource):
       os.unlink(self.id_attrs['path'])
 
 def register():
-  restype = ResourceType('File', File,
+  restype = ResourceType('PlainFile', PlainFile,
       id_type={
         'path': AttrType(
           valid_condition=is_valid_path),
@@ -91,6 +91,8 @@ def register():
         'mode': AttrType(
           default_value=0600,
           reader=read_mode,
+          # Beware: octal is error-prone
+          pytype=int,
           valid_condition=is_valid_mode),
         })
   Registry.get_singleton().resource_types.register(restype)
