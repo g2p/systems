@@ -11,12 +11,11 @@ class SvnWorkingCopy(Resource):
   A working copy checked out from a subversion repository.
 
   This working copy overwrites any local modifications.
+  The owner for files and .svn are the same
+  as the owner of the desired location.
   """
 
   def get_extra_deps(self):
-    present = self.wanted_attrs['present']
-    if not present:
-      return ()
     location = self.id_attrs['location']
     if not location.wanted_attrs['present']:
       raise ValueError
@@ -24,13 +23,17 @@ class SvnWorkingCopy(Resource):
 
   def place_transitions(self, tg):
     repo_url = self.wanted_attrs['url']
-    loc = self.id_attrs['location'].id_attrs['path']
+    loc = self.id_attrs['location']
+    path = loc.id_attrs['path']
+    owner = loc.wanted_attrs['owner']
     co = transition('Command',
+        username=owner,
         cmdline=['/usr/bin/svn', 'checkout', '--non-interactive', '--force',
-          '--', repo_url, loc, ])
+          '--', repo_url, path, ])
     up = transition('Command',
+        username=owner,
         cmdline=['/usr/bin/svn', 'update', '--non-interactive', '--force',
-          '--', loc, ])
+          '--', path, ])
     tg.add_transition(co)
     tg.add_transition(up)
     tg.add_transition_dependency(co, up)
@@ -45,9 +48,6 @@ def register():
     state_type={
       'url': AttrType(
         pytype=str),
-      'present': AttrType(
-        default_value=True,
-        pytype=bool),
       })
   Registry.get_singleton().resource_types.register(restype)
 

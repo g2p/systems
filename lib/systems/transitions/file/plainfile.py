@@ -35,14 +35,11 @@ def read_present(id_attrs):
   return os.path.lexists(path)
 
 def is_valid_mode(mode):
-  # Only allow the permission bits.
-  # Disallow suid stuff for now.
-  return mode == (stat.S_IMODE(mode) & 0777)
+  # Only allow the permission bits and suid stuff.
+  return mode == stat.S_IMODE(mode)
 
 def read_mode(id):
   path = id.id_attrs['path']
-  # May return invalid mode.
-  # I think it's ok; invalid modes may exist, we just don't set them.
   return stat.S_IMODE(os.lstat(path).st_mode)
 
 

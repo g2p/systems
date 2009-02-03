@@ -35,7 +35,8 @@ class Command(Transition):
             valid_condition=cls.is_valid_cmdline),
           'username': AttrType(
             none_allowed=True,
-            pytype=str),
+            pytype=str,
+            valid_condition=cls.is_valid_username),
           'extra_env': AttrType(
             none_allowed=True,
             valid_condition=cls.is_valid_extra_env),
@@ -56,6 +57,15 @@ class Command(Transition):
             ),
           })
     Registry.get_singleton().transition_types.register(cls.__restype)
+
+  @classmethod
+  def is_valid_username(cls, username):
+    try:
+      pwd.getpwnam(username)
+    except OSError:
+      return False
+    else:
+      return True
 
   @classmethod
   def is_valid_cmdline(cls, cmdline):

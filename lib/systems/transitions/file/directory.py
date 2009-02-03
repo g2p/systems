@@ -3,6 +3,7 @@ from __future__ import with_statement
 
 # use posixpath for platform-indepent paths
 import os
+import pwd
 import stat
 
 from systems.registry import Registry
@@ -18,6 +19,14 @@ def is_valid_path(path):
   """
 
   return os.path.isabs(path)
+
+def is_valid_username(username):
+  try:
+    pwd.getpwnam(username)
+  except OSError:
+    return False
+  else:
+    return True
 
 def read_present(id_attrs):
   """
@@ -36,14 +45,15 @@ def read_present(id_attrs):
     return bool(stat.S_ISDIR(st.st_mode))
 
 def is_valid_mode(mode):
-  # Only allow the permission bits.
-  # Disallow suid stuff for now.
-  return mode == (stat.S_IMODE(mode) & 0777)
+  # Only allow the permission bits and suid stuff.
+  return mode == stat.S_IMODE(mode)
+
+def read_owner(id):
+  path = id.id_attrs['path']
+  return pwd.getpwuid(os.lstat(path).st_uid).pw_name
 
 def read_mode(id):
   path = id.id_attrs['path']
-  # May return invalid mode.
-  # I think it's ok; invalid modes may exist, we just don't set them.
   return stat.S_IMODE(os.lstat(path).st_mode)
 
 
@@ -62,16 +72,22 @@ class Directory(Resource):
     os.umask(0077)
     present0 = self.read_attrs()['present']
     present1 = self.wanted_attrs['present']
+    path = self.id_attrs['path']
 
     if present1:
       if not present0:
         # Create. Will raise if there is a non-dir in the way.
-        os.mkdir(self.id_attrs['path'])
+        os.mkdir(path)
       # Update. We're sure it's no symlink, no need to wrap lchmod.
-      os.chmod(self.id_attrs['path'], self.wanted_attrs['mode'])
+      os.chmod(path, self.wanted_attrs['mode'])
+      owner = self.wanted_attrs['owner']
+      if owner is not None:
+        uid = pwd.getpwnam(owner).pw_uid
+        # -1 means no change
+        os.lchown(path, uid, -1)
     elif present0:
       # Delete
-      os.rmdir(self.id_attrs['path'])
+      os.rmdir(path)
 
 def register():
   restype = ResourceType('Directory', Directory,
@@ -88,6 +104,12 @@ def register():
           default_value=0700,
           reader=read_mode,
           valid_condition=is_valid_mode),
+        'owner': AttrType(
+          none_allowed=True,
+          reader=read_owner,
+          valid_condition=is_valid_username,
+          # XXX References that don't force realisation would be better.
+          pytype=str),
         })
   Registry.get_singleton().resource_types.register(restype)
 
