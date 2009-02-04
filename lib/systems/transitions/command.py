@@ -33,6 +33,9 @@ class Command(Transition):
           'unless': AttrType(
             none_allowed=True,
             valid_condition=cls.is_valid_cmdline),
+          'cwd': AttrType(
+            none_allowed=True,
+            pytype=str),
           'username': AttrType(
             none_allowed=True,
             # Commented since some users are created after validation.
@@ -118,12 +121,14 @@ class Command(Transition):
   def realize_impl(self):
     env = self.env_with(self.instr_attrs['extra_env'])
     preexec_fn = self.dropprivs_fn(self.instr_attrs['username'])
+    cwd = self.instr_attrs['cwd']
 
     if self.instr_attrs['unless'] is not None:
       # Remember, 0 means success
       if subprocess.call(
           self.instr_attrs['unless'],
           preexec_fn=preexec_fn,
+          cwd=cwd,
           env=env) == 0:
         return {
             'retcode': 0,
@@ -145,6 +150,7 @@ class Command(Transition):
         stdin=stdin_flag,
         stdout=stdout_flag,
         preexec_fn=preexec_fn,
+        cwd=cwd,
         env=env)
 
     # Writes, waits until completion.

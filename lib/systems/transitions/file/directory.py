@@ -61,7 +61,8 @@ def register():
         'owner': AttrType(
           none_allowed=True,
           reader=fileperms.read_owner,
-          valid_condition=fileperms.is_valid_username,
+          # Commenting due to users created after validation
+          #valid_condition=fileperms.is_valid_username,
           # XXX Non-realizing references would be nice.
           # eg by building a ref if a res is passed, and depending on the ref.
           pytype=str),

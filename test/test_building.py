@@ -31,11 +31,8 @@ d = ensure_resource(gc, 'PgDatabase', owner=u, name='db-pfuuit')
 rails_sites = ensure_resource(gc, 'Directory',
     path='/var/lib/rails-sites', mode='0755')
 redmine = ensure_resource(gc, 'Redmine',
-    rails=resource('Rails',
-      location=resource('Directory',
-        path='/var/lib/rails-sites/redmine',
-        mode='0755',
-        )),
+    name='main',
+    path='/var/lib/rails-sites/redmine',
     depends=[rails_sites])
 
 ensure_resource(gc, 'SvnWorkingCopy',

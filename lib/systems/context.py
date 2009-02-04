@@ -14,6 +14,25 @@ __all__ = ('Context', 'global_context', )
 class SentinelNode(object):
   pass
 
+class CheckPointSentinel(SentinelNode):
+  pass
+
+class ResourceSentinel(SentinelNode):
+  def __init__(self, res):
+    self._res = res
+
+class BeforeResourceSentinel(ResourceSentinel):
+  pass
+
+class AfterResourceSentinel(ResourceSentinel):
+  pass
+
+class GraphFirstSentinel(SentinelNode):
+  pass
+
+class GraphLastSentinel(SentinelNode):
+  pass
+
 class ResInGraph(object):
   def __init__(self, res, before, after):
     self._res = res
@@ -32,13 +51,13 @@ class ResourceGraph(object):
 
   def __init__(self):
     self._graph = NX.DiGraph()
-    self._first = SentinelNode()
-    self._last = SentinelNode()
+    self._first = GraphFirstSentinel()
+    self._last = GraphLastSentinel()
     self._graph.add_edge(self._first, self._last)
     # Stores ResInGraph entries.
     self.__dict = {}
 
-  def add_transition_dependency(self, node0, node1):
+  def _add_transition_dependency(self, node0, node1):
     if not isinstance(node0, (Transition, SentinelNode)):
       raise TypeError(node0, (Transition, SentinelNode))
     if not isinstance(node1, (Transition, SentinelNode)):
@@ -47,6 +66,8 @@ class ResourceGraph(object):
       raise KeyError(node0)
     if not self._graph.has_node(node1):
       raise KeyError(node1)
+    if self._graph.has_edge(node0, node1):
+      return False
     if node0 == node1:
       # Disallow self-loops to keep acyclic invariant.
       # Also they don't make sense.
@@ -55,29 +76,36 @@ class ResourceGraph(object):
     # Expensive check I guess.
     if not NX.is_directed_acyclic_graph(self._graph):
       # Re-establish invariant.
-      self._graph.remove_edge(node0, node1)
+      self._graph.delete_edge(node0, node1)
       # XXX NX doesn't have a 1-line method for listing those cycles
-      raise ValueError('Dependency graph has cycles')
+      raise ValueError('Dependency graph has cycles', node0, node1)
+    return True
 
-  def _add_node(self, node):
+  def _add_node(self, node, *depends):
     self._graph.add_node(node)
     self._graph.add_edge(self._first, node)
     self._graph.add_edge(node, self._last)
-    return node
+    r = node
+    for dep in depends:
+      self.add_dependency(dep, node)
+    return r
 
-  def _add_sentinel(self, node):
+  def add_checkpoint(self, *depends):
+    return self._add_sentinel(CheckPointSentinel(), *depends)
+
+  def _add_sentinel(self, node, *depends):
     if not isinstance(node, SentinelNode):
       raise TypeError(node, SentinelNode)
-    return self._add_node(node)
+    return self._add_node(node, *depends)
 
   def sorted_transitions(self):
     return [n for n in NX.topological_sort(self._graph)
         if not isinstance(n, SentinelNode)]
 
-  def add_transition(self, transition):
+  def add_transition(self, transition, *depends):
     if not isinstance(transition, Transition):
       raise TypeError(transition, Transition)
-    return self._add_node(transition)
+    return self._add_node(transition, *depends)
 
   def resource_at(self, key):
     return self.__dict[key]._res
@@ -105,7 +133,7 @@ class ResourceGraph(object):
     l = [rig for rig in self.__dict.itervalues() if not rig._expanded]
     return bool(l) # Tests for emptiness
 
-  def add_resource(self, resource):
+  def add_resource(self, resource, *depends):
     """
     Add a resource.
 
@@ -114,24 +142,24 @@ class ResourceGraph(object):
 
     if not isinstance(resource, Resource):
       raise TypeError(resource, Resource)
-    return self._add_roa_internal(resource)
+    return self._add_roa_internal(resource, *depends)
 
   def _add_resource_or_aggregate(self, roa):
     if not isinstance(roa, (Resource, Aggregate)):
       raise TypeError(roa, (Resource, Aggregate))
     return self._add_roa_internal(roa)
 
-  def _add_roa_internal(self, node):
+  def _add_roa_internal(self, node, *depends):
     if node.identity in self.__dict:
       r2 = self.__dict[node.identity]._res
       if node == r2:
         return r2
       raise RuntimeError(node, r2)
-    before = SentinelNode()
-    after = SentinelNode()
-    self._add_sentinel(before)
+    before = BeforeResourceSentinel(node)
+    after = AfterResourceSentinel(node)
+    self._add_sentinel(before, *depends)
     self._add_sentinel(after)
-    self.add_transition_dependency(before, after)
+    self._add_transition_dependency(before, after)
     self.__dict[node.identity] = ResInGraph(node, before, after)
     return node
 
@@ -140,7 +168,7 @@ class ResourceGraph(object):
       node0 = self.__dict[node0.identity]._after
     if isinstance(node1, (Resource, Aggregate)):
       node1 = self.__dict[node1.identity]._before
-    self.add_transition_dependency(node0, node1)
+    return self._add_transition_dependency(node0, node1)
 
   def _is_direct_rconnect(self, r0, r1):
     s0 = self.__dict[r0.identity]._after
@@ -231,6 +259,11 @@ class ResourceGraph(object):
         self.__dict[id] = rig
 
     rig = self.__dict[res.identity]
+    # XXX Problematic:
+    # A dependency is put before a resource (through another dependency),
+    # but the resource also calls up the same dependency internally.
+    # The problem is, the dependency appears at both sides
+    # of resource._before.
     self.add_dependency(rig._before, resource_graph._first)
     self.add_dependency(resource_graph._last, rig._after)
     # Do not delete; we must still be able to identify

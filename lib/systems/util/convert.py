@@ -89,13 +89,12 @@ DECIMAL = "0123456789"
 def oct_to_int(oct):
   if not isinstance(oct, str):
     raise TypeError
-  dec = baseconvert(oct, OCTAL, DECIMAL)
-  return int(dec)
+  return int(oct, 8)
 
 def int_to_oct(intgr):
   if not isinstance(intgr, int):
     raise TypeError
-  oct = baseconvert(str(intgr), DECIMAL, OCTAL)
+  oct = '0' + baseconvert(str(intgr), DECIMAL, OCTAL)
   return oct
 
 

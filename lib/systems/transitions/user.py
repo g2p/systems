@@ -75,10 +75,15 @@ class User(Resource):
     if state0 == state1:
       return
 
+    home = self.wanted_attrs['home']
+    shell = self.wanted_attrs['shell']
+
     p0, p1 = state0['present'], state1['present']
     if (p0, p1) == (False, False):
       return
     elif (p0, p1) == (True, True):
+      if (home, shell) == (None, None):
+        return
       cmdline = ['/usr/sbin/usermod', ]
     elif (p0, p1) == (False, True):
       cmdline = ['/usr/sbin/adduser', '--system', '--disabled-password', ]
@@ -88,10 +93,10 @@ class User(Resource):
       assert False
 
     if p1:
-      if self.wanted_attrs['home'] is not None:
-        cmdline.extend(['--home', self.wanted_attrs['home']])
+      if home is not None:
+        cmdline.extend(['--home', home])
       if self.wanted_attrs['shell'] is not None:
-        cmdline.extend(['--shell', self.wanted_attrs['shell']])
+        cmdline.extend(['--shell', shell])
 
     cmdline.extend(['--', self.id_attrs['name']])
     cmd = transition('Command', cmdline=cmdline)

@@ -71,6 +71,11 @@ It is supported by the environments ASF+SDF and StrategoXT.
 PyMeta would also work and is simple.
 TXL and PyMeta allow mixing syntax and semantics.
 
+=== Serialisation
+
+A cheaper alternative to a grammar.
+* python-yaml
+
 === Miscellany
 
 Type traits
