@@ -19,7 +19,7 @@ text = build_and_render('Hello {{ name }}!\n', name='Jane Doe')
 
 ensure_resource(gc, 'PlainFile',
     path='/tmp/testfile',
-    mode=0644,
+    mode='0644',
     contents=text.encode('utf8'))
 ensure_resource(gc, 'AptitudePackage', name='python-networkx')
 ensure_resource(gc, 'User',
@@ -28,10 +28,20 @@ ensure_resource(gc, 'User',
 u = resource('PgUser', name='user-pfuuit')
 d = ensure_resource(gc, 'PgDatabase', owner=u, name='db-pfuuit')
 
+rails_sites = ensure_resource(gc, 'Directory',
+    path='/var/lib/rails-sites', mode='0755')
+redmine = ensure_resource(gc, 'Redmine',
+    rails=resource('Rails',
+      location=resource('Directory',
+        path='/var/lib/rails-sites/redmine',
+        mode='0755',
+        )),
+    depends=[rails_sites])
+
 ensure_resource(gc, 'SvnWorkingCopy',
     location=resource('Directory',
       path='/tmp/django-queue-service',
-      mode=0755,
+      mode='0755',
       owner='nobody',
       group='nogroup'),
     url='http://django-queue-service.googlecode.com/svn/trunk/')

@@ -4,7 +4,7 @@ from pgcluster import PgCluster
 
 from systems.dsl import resource
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource, Attrs
+from systems.typesystem import AttrType, ResourceType, Resource
 
 __all__ = ('register', )
 

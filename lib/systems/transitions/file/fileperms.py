@@ -7,6 +7,7 @@ import pwd
 import stat
 
 from systems.dsl import transition
+from systems.util.convert import int_to_oct, oct_to_int
 
 
 def is_valid_path(path):
@@ -52,6 +53,7 @@ def read_present(id_attrs, kind_test):
     return bool(kind_test(st.st_mode))
 
 def is_valid_mode(mode):
+  mode = oct_to_int(mode)
   # Only allow the permission bits and suid stuff.
   return mode == stat.S_IMODE(mode)
 
@@ -65,7 +67,7 @@ def read_group(id):
 
 def read_mode(id):
   path = id.id_attrs['path']
-  return stat.S_IMODE(os.lstat(path).st_mode)
+  return int_to_oct(stat.S_IMODE(os.lstat(path).st_mode))
 
 
 
@@ -76,7 +78,7 @@ class FilePermsMixin(object):
 
   def fp_expand_into(self, rg):
     code = transition('PythonCode', function=self._realize)
-    rg.add_transition(code)
+    code = rg.add_transition(code)
 
   def _realize(self):
     # We should pass around file-descriptors to be safe.
@@ -121,6 +123,6 @@ class FilePermsMixin(object):
     os.lchown(path, uid, gid)
 
     # XXX if we handle symlinks, need to wrap lchmod.
-    os.chmod(path, self.wanted_attrs['mode'])
+    os.chmod(path, oct_to_int(self.wanted_attrs['mode']))
 
 

@@ -54,10 +54,10 @@ def register():
           pytype=bool,
           reader=read_present),
         'mode': AttrType(
-          # Beware: octal is error-prone
-          default_value=0700,
+          default_value='0700',
           reader=fileperms.read_mode,
-          valid_condition=fileperms.is_valid_mode),
+          valid_condition=fileperms.is_valid_mode,
+          pytype=str),
         'owner': AttrType(
           none_allowed=True,
           reader=fileperms.read_owner,

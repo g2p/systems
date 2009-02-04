@@ -7,7 +7,7 @@ import subprocess
 
 from systems.dsl import transition
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource, Attrs
+from systems.typesystem import AttrType, ResourceType, Resource
 
 __all__ = ('register', )
 

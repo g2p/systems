@@ -2,7 +2,7 @@
 
 from systems.dsl import resource, transition
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource, Attrs
+from systems.typesystem import AttrType, ResourceType, Resource
 from systems.util.templates import build_and_render
 
 

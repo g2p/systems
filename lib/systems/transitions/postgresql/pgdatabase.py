@@ -7,7 +7,7 @@ from pguser import PgUser
 
 from systems.dsl import resource
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource, Attrs
+from systems.typesystem import AttrType, ResourceType, Resource
 from systems.util.templates import build_and_render
 
 __all__ = ('register', )
@@ -67,7 +67,7 @@ exec /usr/bin/pg_dump -Fc \\
     return resource('PlainFile',
         present=enable_backups,
         path=fname,
-        mode=0700,
+        mode='0700',
         contents=code.encode('utf8'), )
 
   def create_db_trans(self):
