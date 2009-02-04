@@ -96,19 +96,19 @@ def register():
       'name': AttrType(
         pytype=str),
       'location': AttrType(
-        pytype=Directory),
+        rtype='Directory'),
       },
     state_type={
       # More privileged
       'maint_user': AttrType(
         valid_condition=is_valid_user,
         none_allowed=True,
-        pytype=User),
+        rtype='User'),
       # Less privileged
       'run_user': AttrType(
         valid_condition=is_valid_user,
         none_allowed=True,
-        pytype=User),
+        rtype='User'),
       })
   Registry.get_singleton().resource_types.register(restype)
 

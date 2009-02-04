@@ -24,6 +24,9 @@ class ImmutableDict(object):
   def iterkeys(self):
     return self.__dct.iterkeys()
 
+  def __iter__(self):
+    return self.iterkeys()
+
   def keys(self):
     return self.__dct.keys()
 

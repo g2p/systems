@@ -35,14 +35,17 @@ class Redmine(Resource):
       location=loc,
       url=svn_branch,
       ))
+    loc_ref = loc.make_reference()
+    loc_ref = rg.add_reference(loc_ref, co, pub_assets)
+    assert loc_ref.target_identity == loc.identity
+    assert loc_ref.bound
 
     rails = rg.add_resource(resource('Rails',
         name=rails_name,
-        location=loc,
+        location=loc_ref,
         maint_user=maint_user,
         run_user=run_user,
-        ),
-      co, pub_assets)
+        ))
 
 
 def register():

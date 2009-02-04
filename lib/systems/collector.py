@@ -1,7 +1,7 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 
 from systems.util.datatypes import Named
-from systems.typesystem import Resource
+from systems.typesystem import Resource, Expandable
 
 
 class Collector(Named):
@@ -46,14 +46,15 @@ class Collector(Named):
 
 class CollectibleResource(Resource):
   """
-  A marker class. Those will not be expanded.
+  A marker class. Those must not be expanded.
   """
 
   def expand_into(self, resource_graph):
     # Collectible resources are collected, never expanded.
     raise RuntimeError
 
-class Aggregate(object):
+
+class Aggregate(Expandable):
   """
   Apes Resource somewhat.
   """
@@ -61,7 +62,7 @@ class Aggregate(object):
   def expand_into(self, resource_graph):
     # Override this.
     # XXX Caveat:
-    # It might be a bad idea to add resources instead of just transitions.
+    # Only add transitions, not resources.
     raise NotImplementedError
 
   @property

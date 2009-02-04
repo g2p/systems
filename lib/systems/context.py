@@ -6,39 +6,72 @@ import networkx as NX
 
 from systems.collector import Aggregate, CollectibleResource
 from systems.registry import Registry
-from systems.typesystem import Resource, Transition, ResourceRef
+from systems.typesystem import Resource, Transition, ResourceRef, Expandable
 
 __all__ = ('Context', 'global_context', )
 
 
-class SentinelNode(object):
+class CycleError(Exception):
   pass
 
-class CheckPointSentinel(SentinelNode):
+class Node(object):
   pass
 
-class ResourceSentinel(SentinelNode):
+class CheckPointNode(Node):
+  pass
+
+class ExpandableNode(Node):
   def __init__(self, res):
+    if type(self) == ExpandableNode:
+      # Abstract class
+      raise TypeError
     self._res = res
 
-class BeforeResourceSentinel(ResourceSentinel):
+class BeforeExpandableNode(ExpandableNode):
+  def __repr__(self):
+    return '<BeforeExpandableNode before %s>' % self._res
+
+class AfterExpandableNode(ExpandableNode):
   pass
 
-class AfterResourceSentinel(ResourceSentinel):
+class GraphFirstNode(Node):
   pass
 
-class GraphFirstSentinel(SentinelNode):
+class GraphLastNode(Node):
   pass
 
-class GraphLastSentinel(SentinelNode):
-  pass
+class ResourceRefNode(Node):
+  def __init__(self, ref):
+    self.__ref = ref
 
-class ResInGraph(object):
+  @property
+  def reference(self):
+    return self.__ref
+
+class TransitionNode(Node):
+  def __init__(self, transition):
+    self.__transition = transition
+
+  @property
+  def transition(self):
+    return self.__transition
+
+
+class ExpandableInGraph(object):
+  """
+  An expandable can't be put directly in a graph;
+  it must be represented by two nodes (before and after).
+  """
+
   def __init__(self, res, before, after):
+    if not isinstance(res, Expandable):
+      raise TypeError(res, Expandable)
     self._res = res
     self._before = before
     self._after = after
-    self._expanded = False
+    # Processing is either expanding or collecting.
+    self._processed = False
+
 
 class ResourceGraph(object):
   """
@@ -51,17 +84,160 @@ class ResourceGraph(object):
 
   def __init__(self):
     self._graph = NX.DiGraph()
-    self._first = GraphFirstSentinel()
-    self._last = GraphLastSentinel()
+    self._first = GraphFirstNode()
+    self._last = GraphLastNode()
     self._graph.add_edge(self._first, self._last)
-    # Stores ResInGraph entries.
+    # Stores ExpandableInGraph entries.
     self.__dict = {}
+    # Stores ref lists by ids.
+    self.__refs = {}
+    # Map transitions to nodes
+    self.__tr_nodes = {}
+    # Map refs to nodes
+    self.__ref_nodes = {}
 
-  def _add_transition_dependency(self, node0, node1):
-    if not isinstance(node0, (Transition, SentinelNode)):
-      raise TypeError(node0, (Transition, SentinelNode))
-    if not isinstance(node1, (Transition, SentinelNode)):
-      raise TypeError(node1, (Transition, SentinelNode))
+  def sorted_transitions(self):
+    return [n.transition for n in NX.topological_sort(self._graph)
+        if isinstance(n, TransitionNode)]
+
+  def iter_references(self):
+    for coref_list in self.__refs.itervalues():
+      for ref in coref_list:
+        yield ref
+
+  def iter_unresolved_references(self):
+    for ref in self.iter_references():
+      if not ref.bound:
+        yield ref
+
+  def has_unresolved_references(self):
+    l = list(self.iter_unresolved_references())
+    return bool(l) # Tests for non-emptiness
+
+  def iter_unprocessed(self):
+    for rig in self.__dict.itervalues():
+      if not rig._processed:
+        yield rig._res
+
+  def iter_uncollected_resources(self):
+    for res in self.iter_unprocessed():
+      if isinstance(res, CollectibleResource):
+        yield res
+
+  def iter_unexpanded(self):
+    for res in self.iter_unprocessed():
+      # CollectibleResource isn't really an Expandable despite inheritance
+      if not isinstance(res, CollectibleResource):
+        yield res
+
+  def iter_unexpanded_resources(self):
+    for res in self.iter_unexpanded():
+      if isinstance(res, Resource):
+        yield res
+
+  def iter_unexpanded_aggregates(self):
+    for res in self.iter_unexpanded():
+      if isinstance(res, Aggregate):
+        yield res
+
+  def has_unexpanded(self):
+    l = list(self.iter_unexpanded())
+    return bool(l) # Tests for non-emptiness
+
+  def resource_at(self, key):
+    r = self.__dict[key]._res
+    if not isinstance(r, Resource):
+      raise TypeError(r, Resource)
+    return r
+
+  def require_acyclic(self):
+    if not NX.is_directed_acyclic_graph(self._graph):
+      # XXX NX doesn't have a 1-line method for listing those cycles
+      raise CycleError
+
+  def _add_node(self, node, *depends):
+    if not isinstance(node, Node):
+      raise TypeError(node, Node)
+    self._graph.add_node(node)
+    self._graph.add_edge(self._first, node)
+    self._graph.add_edge(node, self._last)
+    r = node
+    for dep in depends:
+      self.add_dependency(dep, node)
+    return r
+
+  def add_checkpoint(self, *depends):
+    return self._add_node(CheckPointNode(), *depends)
+
+  def add_transition(self, transition, *depends):
+    if not isinstance(transition, Transition):
+      raise TypeError(transition, Transition)
+    node = TransitionNode(transition)
+    node = self._add_node(node, *depends)
+    self.__tr_nodes[transition] = node
+    return node.transition
+
+  def add_resource(self, resource, *depends):
+    """
+    Add a resource.
+
+    If an identical resource exists, it is returned.
+    """
+
+    if isinstance(resource, ResourceRef):
+      return self.add_reference(resource, *depends)
+    if not isinstance(resource, Resource):
+      raise TypeError(resource, Resource)
+    res = self._add_expandable(resource, *depends)
+    self._may_resolve_refs(res.identity)
+    return res
+
+  def add_reference(self, ref, *depends):
+    if not isinstance(ref, ResourceRef):
+      raise TypeError(ref, ResourceRef)
+    node = ResourceRefNode(ref)
+    node = self._add_node(node, *depends)
+    self.__ref_nodes[ref] = node
+    corefs = self.__refs.setdefault(ref.target_identity, list())
+    corefs.append(ref)
+    self._may_resolve_refs(ref.target_identity)
+    return node.reference
+
+  def _may_resolve_refs(self, id):
+    if id not in self.__dict or id not in self.__refs:
+      return False
+    res = self.resource_at(id)
+    corefs = self.__refs[id]
+    for ref in corefs:
+      self.add_dependency(res, ref)
+      ref.bind_to(res)
+    return True
+
+  def _add_expandable(self, expandable, *depends):
+    if not isinstance(expandable, Expandable):
+      raise TypeError(expandable, (Resource, Aggregate))
+
+    if expandable.identity in self.__dict:
+      rig = self.__dict[expandable.identity]
+      r2 = rig._res
+      if expandable == r2:
+        return r2
+      # Avoid confusion with processed stuff or different depends.
+      raise RuntimeError(expandable, r2)
+    before = BeforeExpandableNode(expandable)
+    after = AfterExpandableNode(expandable)
+    self._add_node(before, *depends)
+    self._add_node(after)
+    self._add_node_dep(before, after)
+    self.__dict[expandable.identity] = \
+        ExpandableInGraph(expandable, before, after)
+    return expandable
+
+  def _add_node_dep(self, node0, node1):
+    if not isinstance(node0, Node):
+      raise TypeError(node0, Node)
+    if not isinstance(node1, Node):
+      raise TypeError(node1, Node)
     if not self._graph.has_node(node0):
       raise KeyError(node0)
     if not self._graph.has_node(node1):
@@ -72,103 +248,32 @@ class ResourceGraph(object):
       # Disallow self-loops to keep acyclic invariant.
       # Also they don't make sense.
       raise ValueError
+    rev_path = NX.shortest_path(self._graph, node1, node0)
+    if rev_path is not False:
+      raise CycleError(rev_path)
     self._graph.add_edge(node0, node1)
-    # Expensive check I guess.
-    if not NX.is_directed_acyclic_graph(self._graph):
-      # Re-establish invariant.
-      self._graph.delete_edge(node0, node1)
-      # XXX NX doesn't have a 1-line method for listing those cycles
-      raise ValueError('Dependency graph has cycles', node0, node1)
     return True
 
-  def _add_node(self, node, *depends):
-    self._graph.add_node(node)
-    self._graph.add_edge(self._first, node)
-    self._graph.add_edge(node, self._last)
-    r = node
-    for dep in depends:
-      self.add_dependency(dep, node)
-    return r
-
-  def add_checkpoint(self, *depends):
-    return self._add_sentinel(CheckPointSentinel(), *depends)
-
-  def _add_sentinel(self, node, *depends):
-    if not isinstance(node, SentinelNode):
-      raise TypeError(node, SentinelNode)
-    return self._add_node(node, *depends)
-
-  def sorted_transitions(self):
-    return [n for n in NX.topological_sort(self._graph)
-        if not isinstance(n, SentinelNode)]
-
-  def add_transition(self, transition, *depends):
-    if not isinstance(transition, Transition):
-      raise TypeError(transition, Transition)
-    return self._add_node(transition, *depends)
-
-  def resource_at(self, key):
-    return self.__dict[key]._res
-
-  def iter_resources(self):
-    for rig in self.__dict.itervalues():
-      yield rig._res
-
-  def _iter_expandables(self):
-    for rig in self.__dict.itervalues():
-      if not rig._expanded:
-        yield rig._res
-
-  def iter_expandable_resources(self):
-    for res in self._iter_expandables():
-      if not isinstance(res, CollectibleResource):
-        yield res
-
-  def iter_expandable_aggregates(self):
-    for res in self._iter_expandables():
-      if isinstance(res, Aggregate):
-        yield res
-
-  def has_expandables(self):
-    l = [rig for rig in self.__dict.itervalues() if not rig._expanded]
-    return bool(l) # Tests for emptiness
-
-  def add_resource(self, resource, *depends):
-    """
-    Add a resource.
-
-    If an identical resource exists, it is returned.
-    """
-
-    if not isinstance(resource, Resource):
-      raise TypeError(resource, Resource)
-    return self._add_roa_internal(resource, *depends)
-
-  def _add_resource_or_aggregate(self, roa):
-    if not isinstance(roa, (Resource, Aggregate)):
-      raise TypeError(roa, (Resource, Aggregate))
-    return self._add_roa_internal(roa)
-
-  def _add_roa_internal(self, node, *depends):
-    if node.identity in self.__dict:
-      r2 = self.__dict[node.identity]._res
-      if node == r2:
-        return r2
-      raise RuntimeError(node, r2)
-    before = BeforeResourceSentinel(node)
-    after = AfterResourceSentinel(node)
-    self._add_sentinel(before, *depends)
-    self._add_sentinel(after)
-    self._add_transition_dependency(before, after)
-    self.__dict[node.identity] = ResInGraph(node, before, after)
-    return node
+  def _nodeify(self, thing):
+    if isinstance(thing, Node):
+      return thing
+    elif isinstance(thing, Transition):
+      return self.__tr_nodes[thing]
+    elif isinstance(thing, ResourceRef):
+      return self.__ref_nodes[thing]
+    else:
+      raise TypeError
 
   def add_dependency(self, node0, node1):
-    if isinstance(node0, (Resource, Aggregate)):
+    if isinstance(node0, Expandable):
       node0 = self.__dict[node0.identity]._after
-    if isinstance(node1, (Resource, Aggregate)):
+    else:
+      node0 = self._nodeify(node0)
+    if isinstance(node1, Expandable):
       node1 = self.__dict[node1.identity]._before
-    return self._add_transition_dependency(node0, node1)
+    else:
+      node1 = self._nodeify(node1)
+    return self._add_node_dep(node0, node1)
 
   def _is_direct_rconnect(self, r0, r1):
     s0 = self.__dict[r0.identity]._after
@@ -198,26 +303,28 @@ class ResourceGraph(object):
         raise KeyError(r0)
       if r0.identity == r1.identity:
         raise ValueError(r0)
+      rig0 = self.__dict[r0.identity]
+      if rig0._processed:
+        raise RuntimeError
 
-    r1 = self._add_resource_or_aggregate(r1)
+    r1 = self._add_expandable(r1)
     before1 = self.__dict[r1.identity]._before
     after1 = self.__dict[r1.identity]._after
 
     for r0 in r0s:
-      before0 = self.__dict[r0.identity]._before
-      after0 = self.__dict[r0.identity]._after
-      for pred in self._graph.predecessors_iter(before0):
+      rig0 = self.__dict[r0.identity]
+      for pred in self._graph.predecessors_iter(rig0._before):
         self._graph.add_edge(pred, before1)
-      for succ in self._graph.successors_iter(after0):
+        self._graph.delete_edge(pred, rig0._before)
+      for succ in self._graph.successors_iter(rig0._after):
         self._graph.add_edge(after1, succ)
+        self._graph.delete_edge(rig0._after, succ)
 
-      self._graph.delete_node(before0)
-      self._graph.delete_node(after0)
-      del self.__dict[r0.identity]
+      self.__dict[r0.identity]._processed = True
+      self.require_acyclic()
 
-    if not NX.is_directed_acyclic_graph(self._graph):
-      # Can't undo. Invariant will stay broken.
-      raise ValueError('Dependency graph has cycles')
+    # Can't undo. Invariant will stay broken.
+    self.require_acyclic()
 
   def expand_resource(self, res):
     """
@@ -225,12 +332,13 @@ class ResourceGraph(object):
 
     The resource_graph is inserted in the main graph
     between the sentinels that represent the resource.
-
     """
 
     if not res.identity in self.__dict:
       raise KeyError(res)
-    if self.__dict[res.identity]._expanded:
+    rig0 = self.__dict[res.identity]
+
+    if rig0._processed:
       raise RuntimeError
 
     resource_graph = ResourceGraph()
@@ -242,33 +350,36 @@ class ResourceGraph(object):
     for (n0, n1) in resource_graph._graph.edges_iter():
       self.add_dependency(n0, n1)
 
-    for (id, rig) in resource_graph.__dict.iteritems():
-      assert not rig._expanded
-      if id in self.__dict:
-        # Identification
-        rig1 = self.__dict[id]
-        for pred in self._graph.predecessors_iter(rig._before):
-          self._graph.add_edge(pred, rig1._before)
-        for succ in self._graph.successors_iter(rig._after):
-          self._graph.add_edge(rig1._after, succ)
-        self._graph.delete_node(rig._before)
-        self._graph.delete_node(rig._after)
-        if not NX.is_directed_acyclic_graph(self._graph):
-          raise RuntimeError('Identification broke the invariant')
+    for (id1, rig1) in resource_graph.__dict.iteritems():
+      assert not rig1._processed
+      if id1 in self.__dict:
+        # XXX Identification — might be better to put a reference
+        print 'Warning, identification: %s' % rig1._res
+        rig2 = self.__dict[id1]
+        assert not rig2._processed
+        # XXX Write move_edges(n0, n1)
+        for pred in self._graph.predecessors_iter(rig1._before):
+          self._graph.add_edge(pred, rig2._before)
+          self._graph.delete_edge(pred, rig1._before)
+        for succ in self._graph.successors_iter(rig1._after):
+          self._graph.add_edge(rig2._after, succ)
+          self._graph.delete_edge(rig1._after, succ)
+        rig1._processed = True
+        self.require_acyclic()
       else:
-        self.__dict[id] = rig
+        self.__dict[id1] = rig1
 
-    rig = self.__dict[res.identity]
     # XXX Problematic:
     # A dependency is put before a resource (through another dependency),
     # but the resource also calls up the same dependency internally.
     # The problem is, the dependency appears at both sides
     # of resource._before.
-    self.add_dependency(rig._before, resource_graph._first)
-    self.add_dependency(resource_graph._last, rig._after)
-    # Do not delete; we must still be able to identify
+    self.add_dependency(rig0._before, resource_graph._first)
+    self.add_dependency(resource_graph._last, rig0._after)
+    # Never delete; we must still be able to identify
     # to avoid redundant expansion.
-    self.__dict[res.identity]._expanded = True
+    rig0._processed = True
+    self.require_acyclic()
 
 
 class Context(object):
@@ -321,11 +432,8 @@ class Context(object):
     self._expand()
     self._collect()
     self._expand_aggregates()
+    assert not bool(list(self.__resources.iter_unprocessed()))
     self.__state = 'frozen'
-
-  def _resolve_references(self):
-    self.require_state('init')
-    # References were dropped for now. Reinstate them if a use case comes up.
 
   def _collect(self):
     # Collects compatible nodes into merged nodes.
@@ -357,7 +465,8 @@ class Context(object):
     for collector in reg.collectors:
       # Pre-partition is made of parts acceptable for the collector.
       pre_partition = collector.partition(
-          [r for r in self.__resources.iter_resources() if collector.filter(r)])
+          [r for r in self.__resources.iter_uncollected_resources()
+            if collector.filter(r)])
       for part in pre_partition:
         # Collector parts are split again, the sub-parts are merged
         # when dependencies allow.
@@ -377,24 +486,30 @@ class Context(object):
             continue
           merged = collector.collect(part)
           self.__resources.collect_resources(part, merged)
+    assert not bool(list(self.__resources.iter_uncollected_resources()))
 
   def _expand(self):
-    # Call expand_resource for all resources,
-    # including those that were added by a previous call.
+    # Poor man's recursion
     while True:
       fresh = set(r
-          for r in self.__resources.iter_expandable_resources())
+          for r in self.__resources.iter_unexpanded_resources())
       if bool(fresh) == False: # Test for emptiness
-        return
+        break
       for r in fresh:
+        if self.__resources.has_unresolved_references():
+          raise RuntimeError
         self.__resources.expand_resource(r)
+    if self.__resources.has_unresolved_references():
+      raise RuntimeError
+    assert not bool(list(self.__resources.iter_unexpanded_resources()))
 
   def _expand_aggregates(self):
-    for a in self.__resources.iter_expandable_aggregates():
+    for a in self.__resources.iter_unexpanded_aggregates():
       self.__resources.expand_resource(a)
-    # The rule is that aggregates can only expand into transitions.
-    if self.__resources.has_expandables():
-      raise RuntimeError
+    assert not bool(list(self.__resources.iter_unexpanded_aggregates()))
+    # Enforce the rule that aggregates can only expand into transitions.
+    if self.__resources.has_unexpanded():
+      raise RuntimeError(list(self.__resources.iter_unexpanded()))
 
   def realize(self):
     """

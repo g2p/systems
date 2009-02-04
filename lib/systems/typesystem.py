@@ -13,7 +13,7 @@ class AttrType(object):
 
   def __init__(self,
       none_allowed=False, default_value=None,
-      valid_condition=None, pytype=None,
+      valid_condition=None, pytype=None, rtype=None,
       reader=None):
     """
     name: name of the attribute
@@ -31,11 +31,18 @@ class AttrType(object):
 
     if none_allowed and default_value is not None:
       raise ValueError("Can't set both none_allowed and default_value")
+    if pytype is not None and not isinstance(pytype, (type, tuple)):
+      raise TypeError
+    if rtype is not None and not isinstance(rtype, str):
+      raise TypeError
     self.__none_allowed = none_allowed
     self.__default_value = default_value
     self.__valid_condition = valid_condition
     self.__pytype = pytype
+    self.__rtype = rtype
     self.__reader = reader
+    if default_value is not None:
+      self.require_valid_value(default_value)
 
   @property
   def default_value(self):
@@ -68,27 +75,35 @@ class AttrType(object):
   def reader(self):
     return self.__reader
 
-  def is_valid_value(self, val):
+  def require_valid_value(self, val):
     """
-    Whether the value is valid.
+    Check the value is valid, raise if it isn't.
 
-    Checks for None (if allowed, they bypass validation).
+    Checks for None (if allowed, None bypasses validation).
 
-    Then check for pytype and validation functions.
+    Then check pytype, rtype and validation functions.
     """
 
     if self.__none_allowed and val is None:
-      return True
+      return
 
     if self.__pytype is not None:
       if not isinstance(val, self.__pytype):
-        return False
+        raise TypeError(val, self.__pytype)
+
+    if self.__rtype is not None:
+      from systems.registry import Registry
+      rtype = Registry.get_singleton().resource_types.lookup(self.__rtype)
+      # We don't necessarily want an rtype instance.
+      # References are also OK.
+      if not isinstance(val, ResourceBase):
+        raise TypeError(val, ResourceBase)
+      if val.rtype != rtype:
+        raise TypeError(val, rtype)
 
     if self.__valid_condition is not None:
       if not self.__valid_condition(val):
-        return False
-
-    return True
+        raise ValueError(val)
 
   def read_value(self, id):
     """
@@ -96,8 +111,7 @@ class AttrType(object):
     """
 
     v = self.__reader(id)
-    if not self.is_valid_value(v):
-      raise ValueError(v)
+    self.require_valid_value(v)
     return v
 
 
@@ -139,9 +153,7 @@ class SimpleType(object):
           valdict[n] = a.default_value
         else:
           raise KeyError(u'Attribute «%s» is unset' % n)
-      if not a.is_valid_value(valdict[n]):
-        raise ValueError(u'Incorrect value for attribute «%s»: «%s»' %
-            (n, valdict[n]))
+      a.require_valid_value(valdict[n])
     return valdict
 
   @property
@@ -214,7 +226,7 @@ class TransitionType(Named):
     return self.__instance_class(self, instr_valdict)
 
 
-class Attrs(object):
+class Attrs(ImmutableDict):
   """
   A typed set of attribute values.
   """
@@ -223,19 +235,17 @@ class Attrs(object):
     if not isinstance(stype, SimpleType):
       raise TypeError(stype, SimpleType)
     self.__stype = stype
-    self.__valdict = stype.prepare_valdict(valdict)
+    valdict = stype.prepare_valdict(valdict)
+    super(Attrs, self).__init__(valdict)
 
   def _key(self):
-    return (self.__stype, frozenset(self.__valdict.iteritems()))
+    return (self.type, super(Attrs, self)._key())
 
   def __hash__(self):
     return hash(self._key())
 
   def __cmp__(self, other):
     return -cmp(other, self._key())
-
-  def __getitem__(self, key):
-    return self.__valdict[key]
 
   @property
   def type(self):
@@ -256,16 +266,47 @@ class ReadAttrs(object):
     return attr.read_value(self.__id_attrs)
 
 
-class Resource(object):
-  # Subclassing to implement abstract stuff.
-  def __init__(self, rtype, id_valdict, wanted_valdict):
+class Identifiable(object):
+  @property
+  def identity(self):
+    raise NotImplementedError
+
+
+class Expandable(Identifiable):
+  """
+  Something that can expand itself into more elementary components
+  in a resource graph.
+
+  Subclass Identifiable due to ResourceGraph requirements.
+  """
+
+  def expand_into(self, resource_graph):
+    """
+    Place transitions and resources that realize the expandable.
+    """
+
+    raise NotImplementedError
+
+
+class ResourceBase(object):
+  def __init__(self, rtype):
     if not isinstance(rtype, ResourceType):
       raise TypeError
     self.__rtype = rtype
+
+  @property
+  def rtype(self):
+    return self.__rtype
+
+
+class Resource(Expandable, ResourceBase):
+  # Subclass this and implement the abstract stuff.
+  def __init__(self, rtype, id_valdict, wanted_valdict):
+    ResourceBase.__init__(self, rtype)
     self.__id_attrs = Attrs(rtype.id_type, id_valdict)
     self.__wanted_attrs = Attrs(rtype.state_type, wanted_valdict)
     # Reads one by one
-    self.__read_attrs = ReadAttrs(self.id_attrs, self.__rtype.state_type)
+    self.__read_attrs = ReadAttrs(self.id_attrs, self.rtype.state_type)
 
   @property
   def id_attrs(self):
@@ -277,10 +318,10 @@ class Resource(object):
 
   @property
   def identity(self):
-    return (self.__rtype.name, self.__id_attrs)
+    return (self.rtype.name, self.__id_attrs)
 
   def _key(self):
-    return (self.__rtype, self.__id_attrs, self.__wanted_attrs)
+    return (self.rtype, self.__id_attrs, self.__wanted_attrs)
 
   def __cmp__(self, other):
     return -cmp(other, self._key())
@@ -302,33 +343,60 @@ class Resource(object):
     Attribute values as they are read from system state.
     """
 
-    # This is a method and not a property because it changes.
+    # This is a method and not a property because it is not deterministic.
 
     r = self._read_attrs()
     if r != NotImplemented:
-      return Attrs(self.__rtype.state_type, r)
+      return Attrs(self.rtype.state_type, r)
     return self.__read_attrs
 
-  def expand_into(self, resource_graph):
-    """
-    Place transitions and resources that realize the resource.
-    """
-
-    # Only transitions can be evaluated, so put them as deps on the graph.
-    pass
+  def make_reference(self):
+    return ResourceRef(self.rtype, self.id_attrs)
 
 
-class ResourceRef(object):
-  # No subclassing
+class ResourceRef(ResourceBase):
+  """
+  Somewhat like a resource, except not Expandable.
+  """
+
+  # Don't subclass.
   def __init__(self, rtype, id_valdict):
-    if not isinstance(rtype, ResourceType):
-      raise TypeError
-    self.__rtype = rtype
+    ResourceBase.__init__(self, rtype)
     self.__id_attrs = Attrs(rtype.id_type, id_valdict)
+    self.__resource = None
 
   @property
-  def identity(self):
-    return (self.__rtype.name, self.__id_attrs)
+  def target_identity(self):
+    # We don't have an 'identity' property on purpose.
+    # Identity is unique, target_identity isn't.
+    return (self.rtype.name, self.__id_attrs)
+
+  @property
+  def bound(self):
+    return self.__resource is not None
+
+  def bind_to(self, resource):
+    if self.bound:
+      raise RuntimeError('Already resolved')
+    if not isinstance(resource, Resource):
+      raise TypeError
+    if resource.rtype != self.rtype:
+      raise TypeError
+    if resource.identity != self.target_identity:
+      raise ValueError
+    self.__resource = resource
+
+  @property
+  def id_attrs(self):
+    if not self.bound:
+      raise RuntimeError
+    return self.__resource.id_attrs
+
+  @property
+  def wanted_attrs(self):
+    if not self.bound:
+      raise RuntimeError
+    return self.__resource.wanted_attrs
 
 
 class Transition(object):

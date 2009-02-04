@@ -53,7 +53,7 @@ def register():
       id_type={
         'cluster': AttrType(
           default_value=resource('PgCluster'),
-          pytype=PgCluster),
+          rtype='PgCluster'),
         'name': AttrType(
           pytype=str),
         },

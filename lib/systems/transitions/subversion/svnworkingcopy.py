@@ -48,7 +48,7 @@ def register():
   restype = ResourceType('SvnWorkingCopy', SvnWorkingCopy,
     id_type={
       'location': AttrType(
-        pytype=Directory),
+        rtype='Directory'),
       },
     state_type={
       'url': AttrType(

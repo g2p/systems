@@ -105,7 +105,7 @@ def register():
       id_type={
         'cluster': AttrType(
           default_value=resource('PgCluster'),
-          pytype=PgCluster),
+          rtype='PgCluster'),
         'name': AttrType(
           valid_condition=is_valid_dbname,
           pytype=str),
@@ -116,7 +116,7 @@ def register():
           pytype=bool,
           reader=read_present),
         'owner': AttrType(
-          pytype=PgUser),
+          rtype='PgUser'),
         'enable_backups': AttrType(
           default_value=True,
           pytype=bool),
