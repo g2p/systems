@@ -19,6 +19,8 @@ class Redmine(Resource):
     maint_user_name = 'redmine-maint-%s' % self.id_attrs['name']
     # Less privileged (run server, write temporary files)
     run_user_name = 'redmine-run-%s' % self.id_attrs['name']
+    # XXX This is easier
+    run_user_name = maint_user_name
 
     run_user = resource('User', name=run_user_name)
     maint_user = rg.add_resource(resource('User', name=maint_user_name))
@@ -32,13 +34,8 @@ class Redmine(Resource):
         location=loc,
         url=svn_branch,
         ))
-    pub_assets = rg.add_resource(resource('Directory',
-        path=loc.id_attrs['path'] + '/public/plugin_assets',
-        owner=maint_user_name,
-        ),
-      co)
     loc_ref = loc.make_reference()
-    loc_ref = rg.add_reference(loc_ref, pub_assets)
+    loc_ref = rg.add_reference(loc_ref, co)
 
     rails = rg.add_resource(resource('Rails',
         name=rails_name,

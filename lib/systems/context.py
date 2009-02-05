@@ -16,7 +16,8 @@ class CycleError(Exception):
   pass
 
 class Node(object):
-  pass
+  def __repr__(self):
+    return '<%s @ %s>' % (type(self).__name__, hash(self))
 
 class CheckPointNode(Node):
   pass
@@ -30,11 +31,11 @@ class ExpandableNode(Node):
 
 class BeforeExpandableNode(ExpandableNode):
   def __repr__(self):
-    return '<Before %s>' % self._res
+    return '<Before %s @ %s>' % (self._res, hash(self))
 
 class AfterExpandableNode(ExpandableNode):
   def __repr__(self):
-    return '<After %s>' % self._res
+    return '<After %s @ %s>' % (self._res, hash(self))
 
 class GraphFirstNode(Node):
   pass
@@ -291,8 +292,12 @@ class ResourceGraph(object):
     return self.draw_agraph(fname)
 
   def draw_agraph(self, fname):
-    g = NX.to_agraph(self._graph,
-        {'graph': 'nodesep=0.2 rankdir=TB ranksep=1.0'})
+    g = NX.to_agraph(self._graph, {
+        'graph': {
+          'nodesep': '0.2',
+          'rankdir': 'TB',
+          'ranksep': '0.5',
+          }})
     g.layout(prog='dot')
     g.draw(fname)
 

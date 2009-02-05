@@ -68,9 +68,9 @@ class Rails(Resource):
         name=db_name,
         owner=db_user,
         ))
+      # Testing for db:version retcode doesn't work anymore.
       mig = rg.add_transition(transition('Command',
         cmdline=['/usr/bin/rake', 'db:migrate'],
-        unless=['/usr/bin/rake', 'db:version'],
         username=run_user.id_attrs['name'],
         extra_env={ 'RAILS_ENV': env, },
         cwd=location.id_attrs['path'],

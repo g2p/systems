@@ -342,8 +342,7 @@ class Resource(Expandable, ResourceBase):
     l = list()
     l.extend(', %s=%r' % e for e in self.id_attrs.iter_nondefault_attrs())
     l.extend(', %s=%r' % e for e in self.wanted_attrs.iter_nondefault_attrs())
-    return 'resource(%r%s)' % (
-        self.rtype.name, ''.join(l))
+    return 'resource(%r%s)' % (self.rtype.name, ''.join(l))
 
   def _read_attrs(self):
     """
