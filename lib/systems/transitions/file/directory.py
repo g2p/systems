@@ -1,10 +1,11 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 # use posixpath for platform-indepent paths
 import os
 import stat
 
-import fileperms
+from . import fileperms
 
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource

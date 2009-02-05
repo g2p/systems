@@ -1,4 +1,5 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 from itertools import ifilter
 
@@ -29,10 +30,11 @@ class ExpandableNode(Node):
 
 class BeforeExpandableNode(ExpandableNode):
   def __repr__(self):
-    return '<BeforeExpandableNode before %s>' % self._res
+    return '<Before %s>' % self._res
 
 class AfterExpandableNode(ExpandableNode):
-  pass
+  def __repr__(self):
+    return '<After %s>' % self._res
 
 class GraphFirstNode(Node):
   pass
@@ -285,6 +287,23 @@ class ResourceGraph(object):
     return self._is_direct_rconnect(r0, r1) \
         or self._is_direct_rconnect(r1, r0)
 
+  def draw(self, fname):
+    return self.draw_agraph(fname)
+
+  def draw_agraph(self, fname):
+    g = NX.to_agraph(self._graph,
+        {'graph': 'nodesep=0.2 rankdir=TB ranksep=1.0'})
+    g.layout(prog='dot')
+    g.draw(fname)
+
+  def draw_matplotlib(self, fname):
+    # Pyplot is stateful and awkward to use.
+    import matplotlib.pyplot as P
+    # Disable hold or it definitely won't work (probably a bug).
+    P.hold(False)
+    NX.draw(self._graph)
+    P.savefig(fname)
+
   def collect_resources(self, r0s, r1):
     """
     Replace an iterable of resources with one new resource.
@@ -308,21 +327,26 @@ class ResourceGraph(object):
         raise RuntimeError
 
     r1 = self._add_expandable(r1)
-    before1 = self.__dict[r1.identity]._before
-    after1 = self.__dict[r1.identity]._after
+    rig1 = self.__dict[r1.identity]
 
     for r0 in r0s:
       rig0 = self.__dict[r0.identity]
-      for pred in self._graph.predecessors_iter(rig0._before):
-        self._graph.add_edge(pred, before1)
-        self._graph.delete_edge(pred, rig0._before)
-      for succ in self._graph.successors_iter(rig0._after):
-        self._graph.add_edge(after1, succ)
-        self._graph.delete_edge(rig0._after, succ)
+      self._move_edges(rig0._before, rig1._before)
+      self._move_edges(rig0._after, rig1._after)
+      rig0._processed = True
 
-      self.__dict[r0.identity]._processed = True
-      self.require_acyclic()
-
+  def _move_edges(self, n0, n1):
+    if n0 == n1:
+      raise RuntimeError
+    self.require_acyclic()
+    # list is used as a temporary
+    # add after delete in case of same.
+    for pred in list(self._graph.predecessors_iter(n0)):
+      self._graph.delete_edge(pred, n0)
+      self._graph.add_edge(pred, n1)
+    for succ in list(self._graph.successors_iter(n0)):
+      self._graph.delete_edge(n0, succ)
+      self._graph.add_edge(n1, succ)
     # Can't undo. Invariant will stay broken.
     self.require_acyclic()
 
@@ -353,19 +377,15 @@ class ResourceGraph(object):
     for (id1, rig1) in resource_graph.__dict.iteritems():
       assert not rig1._processed
       if id1 in self.__dict:
-        # XXX Identification — might be better to put a reference
-        print 'Warning, identification: %s' % rig1._res
+        # XXX Identification
+        # Todo: replace a collision by two coreferences.
         rig2 = self.__dict[id1]
-        assert not rig2._processed
-        # XXX Write move_edges(n0, n1)
-        for pred in self._graph.predecessors_iter(rig1._before):
-          self._graph.add_edge(pred, rig2._before)
-          self._graph.delete_edge(pred, rig1._before)
-        for succ in self._graph.successors_iter(rig1._after):
-          self._graph.add_edge(rig2._after, succ)
-          self._graph.delete_edge(rig1._after, succ)
+        if rig1._res != rig2._res:
+          raise RuntimeError(rig1._res, rig2._res)
+        print 'Warning, identification: %s' % rig1._res
+        self._move_edges(rig1._before, rig2._before)
+        self._move_edges(rig1._after, rig2._after)
         rig1._processed = True
-        self.require_acyclic()
       else:
         self.__dict[id1] = rig1
 
@@ -517,6 +537,7 @@ class Context(object):
     """
 
     self.ensure_frozen()
+    self.__resources.draw('frozen.svg') # XXX
     for t in self.__resources.sorted_transitions():
       t.realize()
 

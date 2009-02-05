@@ -1,4 +1,5 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 from systems.util.datatypes import ImmutableDict, Named
 
@@ -171,6 +172,9 @@ class ResourceType(Named):
     self.__id_type = SimpleType(id_type)
     self.__state_type = SimpleType(state_type)
 
+  def __repr__(self):
+    return '<RType %s>' % self.name
+
   @property
   def id_type(self):
     return self.__id_type
@@ -246,6 +250,11 @@ class Attrs(ImmutableDict):
 
   def __cmp__(self, other):
     return -cmp(other, self._key())
+
+  def iter_nondefault_attrs(self):
+    for (name, attr) in self.__stype.atypes.iteritems():
+      if self[name] != attr.default_value:
+        yield (name, self[name])
 
   @property
   def type(self):
@@ -328,6 +337,13 @@ class Resource(Expandable, ResourceBase):
 
   def __hash__(self):
     return hash(self._key())
+
+  def __repr__(self):
+    l = list()
+    l.extend(', %s=%r' % e for e in self.id_attrs.iter_nondefault_attrs())
+    l.extend(', %s=%r' % e for e in self.wanted_attrs.iter_nondefault_attrs())
+    return 'resource(%r%s)' % (
+        self.rtype.name, ''.join(l))
 
   def _read_attrs(self):
     """

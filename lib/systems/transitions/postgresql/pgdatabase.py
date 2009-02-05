@@ -1,9 +1,10 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 import re
 
-from pgcluster import PgCluster
-from pguser import PgUser
+from .pgcluster import PgCluster
+from .pguser import PgUser
 
 from systems.dsl import resource
 from systems.registry import Registry

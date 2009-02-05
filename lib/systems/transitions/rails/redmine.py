@@ -1,4 +1,5 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 from systems.dsl import resource
 from systems.registry import Registry
@@ -24,21 +25,20 @@ class Redmine(Resource):
     loc = rg.add_resource(resource('Directory',
         path=self.id_attrs['path'],
         owner=maint_user_name,
+        mode='0755',
         ),
       maint_user)
+    co = rg.add_resource(resource('SvnWorkingCopy',
+        location=loc,
+        url=svn_branch,
+        ))
     pub_assets = rg.add_resource(resource('Directory',
         path=loc.id_attrs['path'] + '/public/plugin_assets',
         owner=maint_user_name,
         ),
-      maint_user)
-    co = rg.add_resource(resource('SvnWorkingCopy',
-      location=loc,
-      url=svn_branch,
-      ))
+      co)
     loc_ref = loc.make_reference()
-    loc_ref = rg.add_reference(loc_ref, co, pub_assets)
-    assert loc_ref.target_identity == loc.identity
-    assert loc_ref.bound
+    loc_ref = rg.add_reference(loc_ref, pub_assets)
 
     rails = rg.add_resource(resource('Rails',
         name=rails_name,

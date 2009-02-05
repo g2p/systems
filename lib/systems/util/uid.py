@@ -1,4 +1,5 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 # Also see http://code.google.com/p/change-process-identity/downloads/list
 # Ignore AIX and solaris ifdefs, the general case is simple.

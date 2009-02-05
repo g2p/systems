@@ -1,12 +1,13 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 def register():
   # Order is important because of default_values.
-  import pgcluster
+  from . import pgcluster
   pgcluster.register()
-  import pguser
+  from . import pguser
   pguser.register()
-  import pgdatabase
+  from . import pgdatabase
   pgdatabase.register()
 
 

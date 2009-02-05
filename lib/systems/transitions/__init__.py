@@ -1,21 +1,22 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 def register():
-  import command
+  from . import command
   command.register()
-  import file
+  from . import file
   file.register()
-  import packages
+  from . import packages
   packages.register()
-  import postgresql
+  from . import postgresql
   postgresql.register()
-  import pythoncode
+  from . import pythoncode
   pythoncode.register()
-  import rails
+  from . import rails
   rails.register()
-  import subversion
+  from . import subversion
   subversion.register()
-  import user
+  from . import user
   user.register()
 
 

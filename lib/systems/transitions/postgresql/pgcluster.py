@@ -1,4 +1,5 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 from systems.dsl import resource, transition
 from systems.registry import Registry

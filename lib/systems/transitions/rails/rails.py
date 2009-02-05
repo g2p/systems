@@ -1,4 +1,5 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
+from __future__ import absolute_import
 
 import yaml
 
@@ -52,6 +53,7 @@ class Rails(Resource):
     # Problem: how can I give a different user for migrations
     # and normal connections, in database.yml ?
     db_user = rg.add_resource(resource('PgUser', name=run_user_name, ))
+    location = rg.add_resource(location)
 
     db_conf_tree = {}
     migs = []
@@ -72,10 +74,7 @@ class Rails(Resource):
         username=run_user.id_attrs['name'],
         extra_env={ 'RAILS_ENV': env, },
         cwd=location.id_attrs['path'],
-        ))
-      rg.add_dependency(run_user, mig)
-      rg.add_dependency(db, mig)
-      rg.add_dependency(pkgs, mig)
+        ), run_user, db, pkgs, location)
       migs.append(mig)
 
     db_conf_str = yaml.safe_dump(db_conf_tree, default_flow_style=False)
@@ -83,7 +82,7 @@ class Rails(Resource):
       path=location.id_attrs['path'] + '/config/database.yml',
       contents=db_conf_str,
       mode='0644',
-      ))
+      ), location)
     for mig in migs:
       rg.add_dependency(db_conf_file, mig)
 
