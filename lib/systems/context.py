@@ -64,8 +64,6 @@ class ExpandableInGraph(object):
       raise TypeError(res, Expandable)
     self._res = res
     self._node = node
-    # Processing is either expanding or collecting.
-    self._processed = False
 
     self._resource_graph = ResourceGraph()
     if isinstance(res, Aggregate):
@@ -95,6 +93,8 @@ class ResourceGraph(object):
     self.__expandables = {}
     # A multimap of references.
     self.__corefs = {}
+    # What nodes were processed (meaning expanding or collecting)
+    self.__processed = set()
 
   def sorted_transitions(self):
     return [n for n in NX.topological_sort(self._graph)
@@ -102,7 +102,7 @@ class ResourceGraph(object):
 
   def iter_unprocessed(self):
     for eig in self.__expandables.itervalues():
-      if not eig._processed:
+      if eig._node not in self.__processed:
         yield eig._res
 
   def iter_uncollected_resources(self):
@@ -279,7 +279,7 @@ class ResourceGraph(object):
       if r0.identity == r1.identity:
         raise ValueError(r0)
       eig0 = self.__expandables[r0.identity]
-      if eig0._processed:
+      if eig0._node in self.__processed:
         raise RuntimeError
 
     r1 = self._add_expandable(r1)
@@ -288,7 +288,7 @@ class ResourceGraph(object):
     for r0 in r0s:
       eig0 = self.__expandables[r0.identity]
       self._move_edges(eig0._node, eig1._node)
-      eig0._processed = True
+      self.__processed.add(eig0._node)
 
   def _move_edges(self, n0, n1):
     if n0 == n1:
@@ -339,7 +339,7 @@ class ResourceGraph(object):
       raise KeyError(res)
     eig0 = self.__expandables[res.identity]
 
-    if eig0._processed:
+    if eig0._node in self.__processed:
       raise RuntimeError
 
     resource_graph = eig0._resource_graph
@@ -352,7 +352,7 @@ class ResourceGraph(object):
       self.add_dependency(n0, n1)
 
     for (id1, eig1) in resource_graph.__expandables.iteritems():
-      assert not eig1._processed
+      assert eig1._node not in self.__processed
       if id1 in self.__expandables:
         # Pass by reference if you must use the same resource
         # in different contexts.
@@ -365,7 +365,7 @@ class ResourceGraph(object):
     self._move_edges(resource_graph._last, after)
     # Never delete; we must still be able to identify
     # to avoid redundant expansion.
-    eig0._processed = True
+    self.__processed.add(eig0._node)
     # XXX Problematic:
     # A dependency is put before a resource (through another dependency),
     # but the resource also calls up the same dependency internally.
