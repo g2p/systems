@@ -53,17 +53,10 @@ class ExpandableByRefNode(Node):
   def __init__(self, res):
     self._res = res
 
-class TransitionNode(Node):
-  def __init__(self, transition):
-    self.__transition = transition
+def describe(thing):
+    return '<%s @ %s>' % (repr(thing)[:REPR_LIMIT], hash(thing))
 
-  @property
-  def transition(self):
-    return self.__transition
-
-  def __repr__(self):
-    return '<Transition %s @ %s>' % (repr(self.transition)[:REPR_LIMIT], hash(self))
-
+node_types = (Node, Transition)
 
 class ExpandableInGraph(object):
   def __init__(self, graph, res, node):
@@ -102,12 +95,10 @@ class ResourceGraph(object):
     self.__expandables = {}
     # A multimap of references.
     self.__corefs = {}
-    # Map transitions to nodes.
-    self.__tr_nodes = {}
 
   def sorted_transitions(self):
-    return [n.transition for n in NX.topological_sort(self._graph)
-        if isinstance(n, TransitionNode)]
+    return [n for n in NX.topological_sort(self._graph)
+        if isinstance(n, Transition)]
 
   def iter_unprocessed(self):
     for eig in self.__expandables.itervalues():
@@ -151,8 +142,8 @@ class ResourceGraph(object):
       raise CycleError
 
   def _add_node(self, node, depends=()):
-    if not isinstance(node, Node):
-      raise TypeError(node, Node)
+    if not isinstance(node, node_types):
+      raise TypeError(node, node_types)
     self._graph.add_node(node)
     self._graph.add_edge(self._first, node)
     self._graph.add_edge(node, self._last)
@@ -167,10 +158,8 @@ class ResourceGraph(object):
   def add_transition(self, transition, depends=()):
     if not isinstance(transition, Transition):
       raise TypeError(transition, Transition)
-    node = TransitionNode(transition)
-    node = self._add_node(node, depends)
-    self.__tr_nodes[transition] = node
-    return node.transition
+    node = self._add_node(transition, depends)
+    return transition
 
   def add_resource(self, resource, depends=()):
     """
@@ -203,10 +192,10 @@ class ResourceGraph(object):
     return expandable
 
   def _add_node_dep(self, node0, node1):
-    if not isinstance(node0, Node):
-      raise TypeError(node0, Node)
-    if not isinstance(node1, Node):
-      raise TypeError(node1, Node)
+    if not isinstance(node0, node_types):
+      raise TypeError(node0, node_types)
+    if not isinstance(node1, node_types):
+      raise TypeError(node1, node_types)
     if not self._graph.has_node(node0):
       raise KeyError(node0)
     if not self._graph.has_node(node1):
@@ -224,12 +213,10 @@ class ResourceGraph(object):
     return True
 
   def _nodeify(self, thing):
-    if isinstance(thing, Node):
+    if isinstance(thing, node_types):
       return thing
     elif isinstance(thing, Expandable):
       return self.__expandables[thing.identity]._node
-    elif isinstance(thing, Transition):
-      return self.__tr_nodes[thing]
     else:
       raise TypeError
 
