@@ -213,12 +213,15 @@ class ResourceGraph(object):
     return True
 
   def _nodeify(self, thing):
-    if isinstance(thing, node_types):
-      return thing
-    elif isinstance(thing, Expandable):
-      return self.__expandables[thing.identity]._node
+    if isinstance(thing, Expandable):
+      node = self.__expandables[thing.identity]._node
+    elif isinstance(thing, node_types):
+      node = thing
     else:
       raise TypeError
+    if node not in self._graph:
+      raise KeyError(node)
+    return node
 
   def add_dependency(self, elem0, elem1):
     node0 = self._nodeify(elem0)
