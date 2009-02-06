@@ -146,7 +146,7 @@ class ResourceGraph(object):
     self._graph.add_edge(self._first, node)
     self._graph.add_edge(node, self._last)
     for dep in depends:
-      depn = self._nodeify(dep)
+      depn = self._intern(dep)
       self._add_node_dep(depn, node)
     return node
 
@@ -208,23 +208,23 @@ class ResourceGraph(object):
     self._graph.add_edge(node0, node1)
     return True
 
-  def _nodeify(self, thing):
+  def _intern(self, thing):
     if not isinstance(thing, node_types):
       raise TypeError
-    if isinstance(thing, Expandable):
-      assert thing == self.__expandables[thing.identity]._res
     if thing not in self._graph:
       raise KeyError(node)
+    if isinstance(thing, Expandable):
+      assert thing == self.__expandables[thing.identity]._res
     return thing
 
   def add_dependency(self, elem0, elem1):
-    node0 = self._nodeify(elem0)
-    node1 = self._nodeify(elem1)
+    node0 = self._intern(elem0)
+    node1 = self._intern(elem1)
     return self._add_node_dep(node0, node1)
 
   def _is_direct_rconnect(self, r0, r1):
-    s0 = self._nodeify(r0)
-    s1 = self._nodeify(r1)
+    s0 = self._intern(r0)
+    s1 = self._intern(r1)
     # shortest_path is also a test for connectedness.
     return bool(NX.shortest_path(self._graph, s0, s1))
 
@@ -271,21 +271,19 @@ class ResourceGraph(object):
     if r1.identity in self.__expandables:
       raise ValueError
     for r0 in r0s:
-      if not r0.identity in self.__expandables:
-        raise KeyError(r0)
+      r0 = self._intern(r0)
       if r0.identity == r1.identity:
         raise ValueError(r0)
-      eig0 = self.__expandables[r0.identity]
-      if eig0._res in self.__processed:
+      if r0 in self.__processed:
         raise RuntimeError
 
     r1 = self._add_expandable(r1)
-    eig1 = self.__expandables[r1.identity]
+    r1 = self._intern(r1)
 
     for r0 in r0s:
-      eig0 = self.__expandables[r0.identity]
-      self._move_edges(eig0._res, eig1._res)
-      self.__processed.add(eig0._res)
+      r0 = self._intern(r0)
+      self._move_edges(r0, r1)
+      self.__processed.add(r0)
 
   def _move_edges(self, n0, n1):
     if n0 == n1:
