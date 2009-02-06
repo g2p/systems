@@ -29,7 +29,7 @@ class AttrType(object):
     valid_condition: a check for valid values
     pytype: a python type values must have
     reader: reads the value from current system state
-    rtype: a resource type. Valid values are _references_ with this type.
+    rtype: a resource type.
 
     If none_allowed is True, None values are allowed, they bypass validation,
     and they will be the default. default_value cannot be set in this case.
@@ -86,7 +86,7 @@ class AttrType(object):
   @property
   def rtype(self):
     """
-    A resource type. We take _references_ to this resource type.
+    A resource type.
     """
 
     return self.__rtype
@@ -254,14 +254,6 @@ class ResourceType(Named):
   def make_instance(self, valdict):
     id_valdict, wanted_valdict = self._separate_valdict(valdict)
     return self.__instance_class(self, id_valdict, wanted_valdict)
-
-  def make_ref(self, valdict):
-    """
-    Make a reference from some constraints.
-    """
-
-    id_valdict, constraints_valdict = self._separate_valdict(valdict)
-    return ResourceRef(self, id_valdict, constraints_valdict)
 
 
 def require_disjoint(d1, d2):
@@ -447,13 +439,6 @@ class Resource(Expandable, ContractSupportBase):
   def pass_by_ref(self, name, value):
     self.__passed_by_ref[name] = value
 
-  def make_reference(self):
-    """
-    Make a reference that matches the resource exactly.
-    """
-    
-    return ResourceRef(self.rtype, self.id_attrs, self.wanted_attrs)
-
   def iter_passed_by_ref(self):
     for item in self.id_attrs.iter_passed_by_ref():
       yield item
@@ -470,98 +455,6 @@ class Resource(Expandable, ContractSupportBase):
 
 class UnresolvedReferenceError(RuntimeError):
   pass
-
-
-class ResourceRef(object):
-  """
-  Somewhat like a resource, except not Expandable.
-
-  Don't subclass. Get instances using Resource.make_reference or the DSL.
-  """
-
-  def __init__(self, rtype, id_valdict, constraints_valdict):
-    self.__target_rtype = rtype
-    self.__target_id_attrs = Attrs(rtype.id_type, id_valdict)
-    self.__constrained_attrs = Attrs(rtype.state_type,
-        constraints_valdict, partial=True)
-    self.__read_attrs = ReadAttrs(
-        self.target_id_attrs,
-        self.target_rtype.state_type,
-        self.target_rtype.global_reader)
-    self.__resource = None
-
-  @property
-  def target_identity(self):
-    # We don't have an 'identity' property on purpose.
-    # Identity is unique, target_identity isn't.
-    return (self.target_rtype.name, self.target_id_attrs)
-
-  @property
-  def target_rtype(self):
-    # Different name to not confuse this with a Resource.
-    return self.__target_rtype
-
-  @property
-  def bound(self):
-    return self.__resource is not None
-
-  def bind_to(self, resource):
-    """
-    Bind to a resource.
-
-    This is meant to be called from a context graph.
-    This is so that there is a resource-before-reference dependency.
-    """
-
-    if self.bound:
-      raise RuntimeError('Already resolved')
-    if not isinstance(resource, Resource):
-      raise TypeError
-    if resource.rtype != self.target_rtype:
-      raise TypeError
-    if resource.identity != self.target_identity:
-      raise ValueError
-    for (k, v) in self.constrained_attrs.iteritems():
-      v1 = resource.wanted_attrs[k]
-      if v1 != v:
-        raise ValueError(k, v1, v)
-    self.__resource = resource
-
-  def soft_check(self):
-    """
-    If the context has nothing to bind us to,
-    see if the system state already matches our constraints.
-    """
-
-    if self.bound:
-      raise RuntimeError
-    for (k, v) in self.constrained_attrs.iteritems():
-      v1 = self.__read_attrs[k]
-      if v1 != v:
-        raise ValueError(self, k, v1, v)
-
-  @property
-  def target_id_attrs(self):
-    return self.__target_id_attrs
-
-  @property
-  def constrained_attrs(self):
-    return self.__constrained_attrs
-
-  @property
-  def target_wanted_attrs(self):
-    if not self.bound:
-      raise UnresolvedReferenceError(self)
-    return self.__resource.wanted_attrs
-
-  def __repr__(self):
-    l = list()
-    l.extend(', %s=%r' % e
-        for e in self.target_id_attrs.iter_nondefault_attrs())
-    l.extend(', %s=%r' % e
-        for e in self.constrained_attrs.iteritems())
-    return 'resource_ref(%r%s)' % (self.target_rtype.name, ''.join(l))
-
 
 
 class Transition(object):

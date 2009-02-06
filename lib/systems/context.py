@@ -8,7 +8,7 @@ import networkx as NX
 
 from systems.collector import Aggregate, CollectibleResource
 from systems.registry import Registry
-from systems.typesystem import Resource, Transition, ResourceRef, Expandable
+from systems.typesystem import Resource, Transition, Expandable
 
 __all__ = ('Context', 'global_context', )
 
@@ -52,17 +52,6 @@ class GraphLastNode(Node):
 class ExpandableByRefNode(Node):
   def __init__(self, res):
     self._res = res
-
-class ResourceRefNode(Node):
-  def __init__(self, ref):
-    self.__ref = ref
-
-  @property
-  def reference(self):
-    return self.__ref
-
-  def __repr__(self):
-    return '<Ref to a %s @ %s>' % (self.__ref.rtype, hash(self))
 
 class TransitionNode(Node):
   def __init__(self, transition):
@@ -117,14 +106,10 @@ class ResourceGraph(object):
     # Stores ExpandableInGraph entries.
     # XXX CollectibleResource shouldn't really be expandable.
     self.__expandables = {}
-    # Stores ref lists by ids. Those references are deprecated.
-    self.__refs = {}
-    # A totally different kind of reference.
+    # A multimap of references.
     self.__corefs = {}
-    # Map transitions to nodes
+    # Map transitions to nodes.
     self.__tr_nodes = {}
-    # Map refs to nodes
-    self.__ref_nodes = {}
 
   def sorted_transitions(self):
     return [n.transition for n in NX.topological_sort(self._graph)
@@ -141,20 +126,6 @@ class ResourceGraph(object):
         if eig._processed:
           continue
         yield res
-
-  def iter_references(self):
-    for coref_list in self.__refs.itervalues():
-      for ref in coref_list:
-        yield ref
-
-  def iter_unresolved_references(self):
-    for ref in self.iter_references():
-      if not ref.bound:
-        yield ref
-
-  def has_unresolved_references(self):
-    l = list(self.iter_unresolved_references())
-    return bool(l) # Tests for non-emptiness
 
   def iter_unprocessed(self):
     for eig in self.__expandables.itervalues():
@@ -229,42 +200,9 @@ class ResourceGraph(object):
     if not isinstance(resource, Resource):
       raise TypeError(resource, Resource)
     res = self._add_expandable(resource, depends)
-    self._may_resolve_refs(res.identity)
     if res.rtype.name == 'PgUserXX':
       logger.debug(traceback.format_stack())
     return res
-
-  def add_reference(self, ref, depends=()):
-    """
-    Add a reference.
-
-    ref is a constrained reference, and the context uses soft-reference
-    semantics. This means that the reference either exists, or a resource
-    is created read-only to see if the read state matches the constraints.
-    """
-
-    if not isinstance(ref, ResourceRef):
-      raise TypeError(ref, ResourceRef)
-    node = ResourceRefNode(ref)
-    node = self._add_node(node, depends)
-    self.__ref_nodes[ref] = node
-    corefs = self.__refs.setdefault(ref.target_identity, list())
-    corefs.append(ref)
-    self._may_resolve_refs(ref.target_identity)
-    return node.reference
-
-  def _may_resolve_refs(self, id):
-    if id not in self.__expandables or id not in self.__refs:
-      return False
-    res = self.resource_at(id)
-    corefs = self.__refs[id]
-    for ref in corefs:
-      if ref.bound:
-        continue
-      logger.debug('Resolving: %s', ref)
-      self.add_dependency(res, ref)
-      ref.bind_to(res)
-    return True
 
   def _add_expandable(self, expandable, depends=()):
     if not isinstance(expandable, Expandable):
@@ -312,8 +250,6 @@ class ResourceGraph(object):
       return thing
     elif isinstance(thing, Transition):
       return self.__tr_nodes[thing]
-    elif isinstance(thing, ResourceRef):
-      return self.__ref_nodes[thing]
     else:
       raise TypeError
 
@@ -505,7 +441,7 @@ class Context(object):
     """
     Build the finished dependency graph.
 
-    Resolve references, merge identical realizables, collect what can be.
+    Merge identical realizables, collect what can be.
     """
 
     if self.__state == 'frozen':
@@ -579,11 +515,7 @@ class Context(object):
       if bool(fresh) == False: # Test for emptiness
         break
       for r in fresh:
-        if self.__resources.has_unresolved_references():
-          raise RuntimeError
         self.__resources.expand_resource(r)
-    if self.__resources.has_unresolved_references():
-      raise RuntimeError
     assert not bool(list(self.__resources.iter_unexpanded_resources()))
     assert not bool(list(self.__resources.iter_sorted_unexpanded_resources()))
 

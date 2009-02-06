@@ -11,17 +11,6 @@ from systems.typesystem import AttrType, ResourceType, Resource
 def is_valid_user(user):
   return user.wanted_attrs['present'] is True
 
-def get_user(user, default_name, rg):
-  if user is None:
-    # See about avoiding creating those users a home:
-    # --no-create-home, now to find the correct resource attrs.
-    user = resource('User', name=default_name, )
-    user_name = default_name
-  else:
-    user_name = user.id_attrs['name']
-  user = rg.add_reference(user)
-  return user, user_name
-
 class Rails(Resource):
   """
   A rails application.
