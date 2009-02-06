@@ -58,16 +58,16 @@ def is_valid_mode(mode):
   # Only allow the permission bits and suid stuff.
   return mode == stat.S_IMODE(mode)
 
-def read_owner(id):
-  path = id.id_attrs['path']
+def read_owner(id_attrs):
+  path = id_attrs['path']
   return pwd.getpwuid(os.lstat(path).st_uid).pw_name
 
-def read_group(id):
-  path = id.id_attrs['path']
-  return grp.getgruid(os.lstat(path).st_gid).gr_name
+def read_group(id_attrs):
+  path = id_attrs['path']
+  return grp.getgrgid(os.lstat(path).st_gid).gr_name
 
-def read_mode(id):
-  path = id.id_attrs['path']
+def read_mode(id_attrs):
+  path = id_attrs['path']
   return int_to_oct(stat.S_IMODE(os.lstat(path).st_mode))
 
 

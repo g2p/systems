@@ -40,6 +40,7 @@ class Directory(fileperms.FilePermsMixin, Resource):
     pass
 
   def delete(self):
+    path = self.id_attrs['path']
     os.rmdir(path)
 
 def register():

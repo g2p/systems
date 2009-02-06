@@ -4,7 +4,6 @@ from __future__ import absolute_import
 from systems.dsl import resource
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource
-from systems.transitions.file.directory import Directory
 
 
 class Redmine(Resource):
@@ -14,6 +13,7 @@ class Redmine(Resource):
 
   def expand_into(self, rg):
     svn_branch = self.wanted_attrs['svn_branch']
+    cluster = self.wanted_attrs['cluster']
     rails_name = 'redmine-%s' % self.id_attrs['name']
     # Privileged (create tables, update checkout)
     maint_user_name = 'redmine-maint-%s' % self.id_attrs['name']
@@ -27,22 +27,22 @@ class Redmine(Resource):
     loc = rg.add_resource(resource('Directory',
         path=self.id_attrs['path'],
         owner=maint_user_name,
+        group='root',
         mode='0755',
         ),
-      maint_user)
+      depends=(maint_user, ))
     co = rg.add_resource(resource('SvnWorkingCopy',
         location=loc,
         url=svn_branch,
         ))
-    loc_ref = loc.make_reference()
-    loc_ref = rg.add_reference(loc_ref, co)
-
     rails = rg.add_resource(resource('Rails',
         name=rails_name,
-        location=loc_ref,
+        location=loc,
         maint_user=maint_user,
         run_user=run_user,
+        cluster=cluster,
         ))
+    rg.add_dependency(co, rails.passed_by_ref['location'])
 
 
 def register():
@@ -58,6 +58,8 @@ def register():
       'svn_branch': AttrType(
         default_value='http://redmine.rubyforge.org/svn/branches/0.8-stable/',
         pytype=str),
+      'cluster': AttrType(
+        rtype='PgCluster'),
       })
   Registry.get_singleton().resource_types.register(restype)
 

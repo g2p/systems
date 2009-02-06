@@ -6,7 +6,6 @@ import subprocess
 from systems.dsl import resource, transition
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource
-from systems.transitions.file.directory import Directory
 
 
 def is_valid_arg(st):

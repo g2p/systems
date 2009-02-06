@@ -2,8 +2,6 @@
 from __future__ import absolute_import
 
 import re
-import os
-import subprocess
 
 from systems.collector import Collector, Aggregate, CollectibleResource
 from systems.registry import Registry

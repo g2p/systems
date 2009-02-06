@@ -1,7 +1,13 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 from __future__ import absolute_import
 
+from logging import getLogger
+
+from systems.util.contracts import ContractSupportBase, precondition
 from systems.util.datatypes import ImmutableDict, Named
+
+
+logger = getLogger(__name__)
 
 
 class AttrType(object):
@@ -23,6 +29,7 @@ class AttrType(object):
     valid_condition: a check for valid values
     pytype: a python type values must have
     reader: reads the value from current system state
+    rtype: a resource type. Valid values are _references_ with this type.
 
     If none_allowed is True, None values are allowed, they bypass validation,
     and they will be the default. default_value cannot be set in this case.
@@ -76,6 +83,14 @@ class AttrType(object):
   def reader(self):
     return self.__reader
 
+  @property
+  def rtype(self):
+    """
+    A resource type. We take _references_ to this resource type.
+    """
+
+    return self.__rtype
+
   def require_valid_value(self, val):
     """
     Check the value is valid, raise if it isn't.
@@ -95,12 +110,10 @@ class AttrType(object):
     if self.__rtype is not None:
       from systems.registry import Registry
       rtype = Registry.get_singleton().resource_types.lookup(self.__rtype)
-      # We don't necessarily want an rtype instance.
-      # References are also OK.
-      if not isinstance(val, ResourceBase):
-        raise TypeError(val, ResourceBase)
+      if not isinstance(val, Resource):
+        raise TypeError(val, Resource)
       if val.rtype != rtype:
-        raise TypeError(val, rtype)
+        raise TypeError(val.rtype, rtype)
 
     if self.__valid_condition is not None:
       if not self.__valid_condition(val):
@@ -157,13 +170,39 @@ class SimpleType(object):
       a.require_valid_value(valdict[n])
     return valdict
 
+  def prepare_partial_valdict(self, valdict):
+    """
+    Validates the valdict, without requiring all values
+    and without adding default values.
+    """
+
+    for k in valdict:
+      if k not in self.atypes:
+        raise KeyError(u'Invalid attribute «%s»' % k)
+      self.atypes[k].require_valid_value(valdict[k])
+    return valdict
+
   @property
   def atypes(self):
     return self.__atypes
 
 
 class ResourceType(Named):
-  def __init__(self, name, instance_class, id_type, state_type):
+  def __init__(self,
+      name, instance_class, id_type, state_type, global_reader=None):
+    """
+    Build a ResouceType.
+
+    name is the name that can be used to look us up once we are registered.
+    instance_class is the class that will be used to create Resources
+    of this type. It must be a subclass of Resource.
+    id_type is the dictionary of AttrType from which we will build
+    our identity type.
+    state_type is like id_type for our state type.
+    global_reader is a function that reads the current system state,
+    if passed identity attributes.
+    """
+
     if not issubclass(instance_class, Resource):
       raise TypeError
     Named.__init__(self, name)
@@ -171,6 +210,7 @@ class ResourceType(Named):
     require_disjoint(id_type, state_type)
     self.__id_type = SimpleType(id_type)
     self.__state_type = SimpleType(state_type)
+    self.__global_reader = global_reader
 
   def __repr__(self):
     return '<RType %s>' % self.name
@@ -183,7 +223,20 @@ class ResourceType(Named):
   def state_type(self):
     return self.__state_type
 
-  def make_instance(self, valdict):
+  @property
+  def global_reader(self):
+    """
+    A function to read attribute values.
+
+    Write one when it is more convenient to read all attributes at once.
+    """
+
+    # At the moment there is no efficiency gains in global reads
+    # since we want values to be fresh.
+    # The only gain is the convenience of being able to write just one method.
+    return self.__global_reader
+
+  def _separate_valdict(self, valdict):
     id_valdict = dict((k, v)
         for (k, v) in valdict.iteritems()
         if k in self.__id_type.atypes)
@@ -196,10 +249,19 @@ class ResourceType(Named):
         and k not in self.__state_type.atypes)
     if bool(unknown_attrs): # Test for non-emptiness
       raise ValueError(unknown_attrs)
+    return id_valdict, wanted_valdict
+
+  def make_instance(self, valdict):
+    id_valdict, wanted_valdict = self._separate_valdict(valdict)
     return self.__instance_class(self, id_valdict, wanted_valdict)
 
-  def make_ref(self, **id_valdict):
-    return ResourceRef(self, id_valdict)
+  def make_ref(self, valdict):
+    """
+    Make a reference from some constraints.
+    """
+
+    id_valdict, constraints_valdict = self._separate_valdict(valdict)
+    return ResourceRef(self, id_valdict, constraints_valdict)
 
 
 def require_disjoint(d1, d2):
@@ -235,11 +297,14 @@ class Attrs(ImmutableDict):
   A typed set of attribute values.
   """
 
-  def __init__(self, stype, valdict):
+  def __init__(self, stype, valdict, partial=False):
     if not isinstance(stype, SimpleType):
       raise TypeError(stype, SimpleType)
     self.__stype = stype
-    valdict = stype.prepare_valdict(valdict)
+    if partial:
+      valdict = stype.prepare_partial_valdict(valdict)
+    else:
+      valdict = stype.prepare_valdict(valdict)
     super(Attrs, self).__init__(valdict)
 
   def _key(self):
@@ -256,6 +321,19 @@ class Attrs(ImmutableDict):
       if self[name] != attr.default_value:
         yield (name, self[name])
 
+  def soft_check_refs(self):
+    for (name, attr) in self.__stype.atypes.iteritems():
+      if attr.rtype is not None:
+        ref = self[name]
+        ref.soft_check()
+
+  def iter_passed_by_ref(self):
+    # XXX Subclass AttrType and write RefAttrType.
+    # Propose soft and hard semantics.
+    for (name, attr) in self.__stype.atypes.iteritems():
+      if attr.rtype is not None:
+        yield name, self[name]
+
   @property
   def type(self):
     return self.__stype
@@ -266,13 +344,26 @@ class ReadAttrs(object):
   Attributes read from system state.
   """
 
-  def __init__(self, id_attrs, state_type):
+  def __init__(self, id_attrs, state_type, global_reader):
     self.__id_attrs = id_attrs
     self.__state_type = state_type
+    self.__global_reader = global_reader
 
   def __getitem__(self, key):
     attr = self.__state_type.atypes[key]
-    return attr.read_value(self.__id_attrs)
+
+    if self.__global_reader is None:
+      return attr.read_value(self.__id_attrs)
+
+    r = self.__global_reader(self.__id_attrs)
+    if r == NotImplemented:
+      # Try again without a global_reader
+      self.__global_reader = None
+      return self[key]
+
+    val = r[key]
+    attr.require_valid_value(val)
+    return val
 
 
 class Identifiable(object):
@@ -297,25 +388,17 @@ class Expandable(Identifiable):
     raise NotImplementedError
 
 
-class ResourceBase(object):
-  def __init__(self, rtype):
+class Resource(Expandable, ContractSupportBase):
+  # Make subclasses that implement the abstract stuff.
+  def __init__(self, rtype, id_valdict, wanted_valdict):
     if not isinstance(rtype, ResourceType):
       raise TypeError
     self.__rtype = rtype
-
-  @property
-  def rtype(self):
-    return self.__rtype
-
-
-class Resource(Expandable, ResourceBase):
-  # Subclass this and implement the abstract stuff.
-  def __init__(self, rtype, id_valdict, wanted_valdict):
-    ResourceBase.__init__(self, rtype)
     self.__id_attrs = Attrs(rtype.id_type, id_valdict)
     self.__wanted_attrs = Attrs(rtype.state_type, wanted_valdict)
-    # Reads one by one
-    self.__read_attrs = ReadAttrs(self.id_attrs, self.rtype.state_type)
+    self.__read_attrs = ReadAttrs(
+        self.id_attrs, self.rtype.state_type, self.rtype.global_reader)
+    self.__passed_by_ref = {}
 
   @property
   def id_attrs(self):
@@ -344,14 +427,9 @@ class Resource(Expandable, ResourceBase):
     l.extend(', %s=%r' % e for e in self.wanted_attrs.iter_nondefault_attrs())
     return 'resource(%r%s)' % (self.rtype.name, ''.join(l))
 
-  def _read_attrs(self):
-    """
-    Read attribute values.
-
-    Override this when it is more convenient to read all attributes at once.
-    """
-
-    return NotImplemented
+  @property
+  def rtype(self):
+    return self.__rtype
 
   def read_attrs(self):
     """
@@ -360,58 +438,130 @@ class Resource(Expandable, ResourceBase):
 
     # This is a method and not a property because it is not deterministic.
 
-    r = self._read_attrs()
-    if r != NotImplemented:
-      return Attrs(self.rtype.state_type, r)
     return self.__read_attrs
 
+  @property
+  def passed_by_ref(self):
+    return ImmutableDict(self.__passed_by_ref)
+
+  def pass_by_ref(self, name, value):
+    self.__passed_by_ref[name] = value
+
   def make_reference(self):
-    return ResourceRef(self.rtype, self.id_attrs)
+    """
+    Make a reference that matches the resource exactly.
+    """
+    
+    return ResourceRef(self.rtype, self.id_attrs, self.wanted_attrs)
+
+  def iter_passed_by_ref(self):
+    for item in self.id_attrs.iter_passed_by_ref():
+      yield item
+    for item in self.wanted_attrs.iter_passed_by_ref():
+      yield item
+
+  def before_expand(self, resource_graph):
+    logger.debug('Before expand: %s', self)
+
+  @precondition(before_expand)
+  def expand_into(self, resource_graph):
+    raise NotImplementedError
 
 
-class ResourceRef(ResourceBase):
+class UnresolvedReferenceError(RuntimeError):
+  pass
+
+
+class ResourceRef(object):
   """
   Somewhat like a resource, except not Expandable.
+
+  Don't subclass. Get instances using Resource.make_reference or the DSL.
   """
 
-  # Don't subclass.
-  def __init__(self, rtype, id_valdict):
-    ResourceBase.__init__(self, rtype)
-    self.__id_attrs = Attrs(rtype.id_type, id_valdict)
+  def __init__(self, rtype, id_valdict, constraints_valdict):
+    self.__target_rtype = rtype
+    self.__target_id_attrs = Attrs(rtype.id_type, id_valdict)
+    self.__constrained_attrs = Attrs(rtype.state_type,
+        constraints_valdict, partial=True)
+    self.__read_attrs = ReadAttrs(
+        self.target_id_attrs,
+        self.target_rtype.state_type,
+        self.target_rtype.global_reader)
     self.__resource = None
 
   @property
   def target_identity(self):
     # We don't have an 'identity' property on purpose.
     # Identity is unique, target_identity isn't.
-    return (self.rtype.name, self.__id_attrs)
+    return (self.target_rtype.name, self.target_id_attrs)
+
+  @property
+  def target_rtype(self):
+    # Different name to not confuse this with a Resource.
+    return self.__target_rtype
 
   @property
   def bound(self):
     return self.__resource is not None
 
   def bind_to(self, resource):
+    """
+    Bind to a resource.
+
+    This is meant to be called from a context graph.
+    This is so that there is a resource-before-reference dependency.
+    """
+
     if self.bound:
       raise RuntimeError('Already resolved')
     if not isinstance(resource, Resource):
       raise TypeError
-    if resource.rtype != self.rtype:
+    if resource.rtype != self.target_rtype:
       raise TypeError
     if resource.identity != self.target_identity:
       raise ValueError
+    for (k, v) in self.constrained_attrs.iteritems():
+      v1 = resource.wanted_attrs[k]
+      if v1 != v:
+        raise ValueError(k, v1, v)
     self.__resource = resource
 
-  @property
-  def id_attrs(self):
-    if not self.bound:
+  def soft_check(self):
+    """
+    If the context has nothing to bind us to,
+    see if the system state already matches our constraints.
+    """
+
+    if self.bound:
       raise RuntimeError
-    return self.__resource.id_attrs
+    for (k, v) in self.constrained_attrs.iteritems():
+      v1 = self.__read_attrs[k]
+      if v1 != v:
+        raise ValueError(self, k, v1, v)
 
   @property
-  def wanted_attrs(self):
+  def target_id_attrs(self):
+    return self.__target_id_attrs
+
+  @property
+  def constrained_attrs(self):
+    return self.__constrained_attrs
+
+  @property
+  def target_wanted_attrs(self):
     if not self.bound:
-      raise RuntimeError
+      raise UnresolvedReferenceError(self)
     return self.__resource.wanted_attrs
+
+  def __repr__(self):
+    l = list()
+    l.extend(', %s=%r' % e
+        for e in self.target_id_attrs.iter_nondefault_attrs())
+    l.extend(', %s=%r' % e
+        for e in self.constrained_attrs.iteritems())
+    return 'resource_ref(%r%s)' % (self.target_rtype.name, ''.join(l))
+
 
 
 class Transition(object):
@@ -443,5 +593,10 @@ class Transition(object):
     results = self.realize_impl()
     self.__results_attrs = Attrs(self.__ttype.results_type, results)
     return self.__results_attrs
+
+  def __repr__(self):
+    l = list()
+    l.extend(', %s=%r' % e for e in self.instr_attrs.iter_nondefault_attrs())
+    return 'transition(%r%s)' % (self.__ttype.name, ''.join(l))
 
 

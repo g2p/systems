@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-import cStringIO as StringIO
 import os
 import pwd
 import subprocess

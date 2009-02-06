@@ -1,8 +1,6 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 from __future__ import absolute_import
 
-from .pgcluster import PgCluster
-
 from systems.dsl import resource
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource
@@ -46,14 +44,12 @@ class PgUser(Resource):
       cluster = self.id_attrs['cluster']
       if not cluster.wanted_attrs['present']:
         raise ValueError
-      rg.add_resource(cluster)
-      rg.add_dependency(cluster, tr)
+      rg.add_dependency(self.passed_by_ref['cluster'], tr)
 
 def register():
   restype = ResourceType('PgUser', PgUser,
       id_type={
         'cluster': AttrType(
-          default_value=resource('PgCluster'),
           rtype='PgCluster'),
         'name': AttrType(
           pytype=str),

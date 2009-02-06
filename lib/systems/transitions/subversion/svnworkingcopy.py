@@ -4,7 +4,6 @@ from __future__ import absolute_import
 from systems.dsl import resource, transition
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource
-from systems.transitions.file.directory import Directory
 
 
 class SvnWorkingCopy(Resource):
@@ -23,7 +22,6 @@ class SvnWorkingCopy(Resource):
       raise ValueError
 
     pkg = rg.add_resource(resource('AptitudePackage', name='subversion'))
-    location = rg.add_resource(location)
 
     repo_url = self.wanted_attrs['url']
     path = location.id_attrs['path']
@@ -41,7 +39,7 @@ class SvnWorkingCopy(Resource):
     rg.add_transition(co)
     rg.add_transition(up)
     rg.add_dependency(pkg, co)
-    rg.add_dependency(location, co)
+    rg.add_dependency(self.passed_by_ref['location'], co)
     rg.add_dependency(co, up)
 
 

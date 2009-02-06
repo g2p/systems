@@ -15,9 +15,9 @@ def resource(typename, **valdict):
   i = t.make_instance(valdict)
   return i
 
-def resource_ref(typename, **id_valdict):
-  t = transition_type(typename)
-  i = t.make_ref(id_valdict)
+def resource_ref(typename, **valdict):
+  t = resource_type(typename)
+  i = t.make_ref(valdict)
   return i
 
 def transition(typename, **instructions_valdict):

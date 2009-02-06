@@ -6,8 +6,6 @@ import yaml
 from systems.dsl import resource, transition
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource
-from systems.transitions.file.directory import Directory
-from systems.transitions.user import User
 
 
 def is_valid_user(user):
@@ -21,7 +19,7 @@ def get_user(user, default_name, rg):
     user_name = default_name
   else:
     user_name = user.id_attrs['name']
-  user = rg.add_resource(user)
+  user = rg.add_reference(user)
   return user, user_name
 
 class Rails(Resource):
@@ -42,18 +40,23 @@ class Rails(Resource):
       name='libpgsql-ruby'))
     ssl_pkg = rg.add_resource(resource('AptitudePackage',
       name='libopenssl-ruby1.8'))
-    pkgs = rg.add_checkpoint(rails_gem, rake_pkg, ruby_pgsql_pkg, ssl_pkg)
+    pkgs = rg.add_checkpoint(
+        depends=(rails_gem, rake_pkg, ruby_pgsql_pkg, ssl_pkg))
 
     name = self.id_attrs['name']
-    run_user, run_user_name = get_user(
-        self.wanted_attrs['run_user'], 'rails-run-%s' % name, rg)
-    maint_user, maint_user_name = get_user(
-        self.wanted_attrs['maint_user'], 'rails-maint-%s' % name, rg)
+    cluster = self.wanted_attrs['cluster']
+    run_user = self.wanted_attrs['run_user']
+    run_user_name = run_user.id_attrs['name']
+    maint_user = self.wanted_attrs['maint_user']
+    maint_user_name = maint_user.id_attrs['name']
+
     # Same name means 'local ident sameuser' auth will work.
     # Problem: how can I give a different user for migrations
     # and normal connections, in database.yml ?
-    db_user = rg.add_resource(resource('PgUser', name=run_user_name, ))
-    location = rg.add_resource(location)
+    db_user = rg.add_resource(resource('PgUser',
+      name=run_user_name,
+      cluster=cluster,
+      ))
 
     db_conf_tree = {}
     migs = []
@@ -67,14 +70,21 @@ class Rails(Resource):
       db = rg.add_resource(resource('PgDatabase',
         name=db_name,
         owner=db_user,
+        cluster=cluster,
         ))
       # Testing for db:version retcode doesn't work anymore.
       mig = rg.add_transition(transition('Command',
         cmdline=['/usr/bin/rake', 'db:migrate'],
-        username=run_user.id_attrs['name'],
+        username=run_user_name,
         extra_env={ 'RAILS_ENV': env, },
         cwd=location.id_attrs['path'],
-        ), run_user, db, pkgs, location)
+        ),
+        depends=(
+          self.passed_by_ref['run_user'],
+          self.passed_by_ref['location'],
+          pkgs,
+          db,
+          ))
       migs.append(mig)
 
     db_conf_str = yaml.safe_dump(db_conf_tree, default_flow_style=False)
@@ -82,7 +92,10 @@ class Rails(Resource):
       path=location.id_attrs['path'] + '/config/database.yml',
       contents=db_conf_str,
       mode='0644',
-      ), location)
+      ),
+      depends=(
+        self.passed_by_ref['location'],
+        ))
     for mig in migs:
       rg.add_dependency(db_conf_file, mig)
 
@@ -101,13 +114,13 @@ def register():
       # More privileged
       'maint_user': AttrType(
         valid_condition=is_valid_user,
-        none_allowed=True,
         rtype='User'),
       # Less privileged
       'run_user': AttrType(
         valid_condition=is_valid_user,
-        none_allowed=True,
         rtype='User'),
+      'cluster': AttrType(
+        rtype='PgCluster'),
       })
   Registry.get_singleton().resource_types.register(restype)
 

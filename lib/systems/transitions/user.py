@@ -2,10 +2,8 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
-import os
 import pwd
 import re
-import subprocess
 
 from systems.dsl import transition
 from systems.registry import Registry
@@ -13,9 +11,27 @@ from systems.typesystem import AttrType, ResourceType, Resource
 
 __all__ = ('register', )
 
+def read_attrs(id_attrs):
+  name = id_attrs['name']
+  try:
+    p = pwd.getpwnam(name)
+  except KeyError:
+    present = False
+    home = None
+    shell = None
+  else:
+    present = True
+    home = p.pw_dir
+    shell = p.pw_shell
+  return {
+      'present': present,
+      'home': home,
+      'shell': shell,
+      }
+
 class User(Resource):
   """
-  A system user managed on the local system (/etc/password and friends)
+  A system user managed on the local system (PAM, /etc/passwd and friends)
 
   Uses the debian command adduser
   """
@@ -37,7 +53,9 @@ class User(Resource):
           'shell': AttrType(
             none_allowed=True,
             valid_condition=cls.is_valid_shell),
-          })
+          },
+        global_reader=read_attrs,
+        )
     Registry.get_singleton().resource_types.register(cls.__restype)
 
   @classmethod
@@ -52,24 +70,6 @@ class User(Resource):
   @classmethod
   def is_valid_shell(cls, shell):
     return shell is None or bool(re.match('^/[/a-z0-9_-]*$', shell))
-
-  def _read_attrs(self):
-    name = self.id_attrs['name']
-    try:
-      p = pwd.getpwnam(name)
-    except KeyError:
-      present = False
-      home = None
-      shell = None
-    else:
-      present = True
-      home = p.pw_dir
-      shell = p.pw_shell
-    return {
-        'present': present,
-        'home': home,
-        'shell': shell,
-        }
 
   def expand_into(self, rg):
     state0 = self.read_attrs()

@@ -3,9 +3,6 @@ from __future__ import absolute_import
 
 import re
 
-from .pgcluster import PgCluster
-from .pguser import PgUser
-
 from systems.dsl import resource
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType, Resource
@@ -45,10 +42,8 @@ class PgDatabase(Resource):
         raise ValueError
       if not cluster.wanted_attrs['present']:
         raise ValueError
-      owner = rg.add_resource(owner)
-      cluster = rg.add_resource(cluster)
-      rg.add_dependency(owner, tr)
-      rg.add_dependency(cluster, tr)
+      rg.add_dependency(self.passed_by_ref['owner'], tr)
+      rg.add_dependency(self.passed_by_ref['cluster'], tr)
 
     enable_backups = p1 and self.wanted_attrs['enable_backups']
     rg.add_resource(self.cron_backup_res(enable_backups))
@@ -105,7 +100,6 @@ def register():
   restype = ResourceType('PgDatabase', PgDatabase,
       id_type={
         'cluster': AttrType(
-          default_value=resource('PgCluster'),
           rtype='PgCluster'),
         'name': AttrType(
           valid_condition=is_valid_dbname,
