@@ -304,15 +304,15 @@ class ResourceGraph(object):
     # Can't undo. Invariant will stay broken.
     self.require_acyclic()
 
-  def _split_node(self, n, res):
+  def _split_node(self, res):
     before = self._add_node(BeforeExpandableNode(res))
     after = self._add_node(AfterExpandableNode(res))
     self._graph.add_edge(before, after)
-    for pred in list(self._graph.predecessors_iter(n)):
-      self._graph.delete_edge(pred, n)
+    for pred in list(self._graph.predecessors_iter(res)):
+      self._graph.delete_edge(pred, res)
       self._graph.add_edge(pred, before)
-    for succ in list(self._graph.successors_iter(n)):
-      self._graph.delete_edge(n, succ)
+    for succ in list(self._graph.successors_iter(res)):
+      self._graph.delete_edge(res, succ)
       self._graph.add_edge(after, succ)
     return before, after
 
@@ -335,11 +335,10 @@ class ResourceGraph(object):
     between the sentinels that represent the resource.
     """
 
-    if not res.identity in self.__expandables:
-      raise KeyError(res)
+    res = self._intern(res)
     eig0 = self.__expandables[res.identity]
 
-    if eig0._res in self.__processed:
+    if res in self.__processed:
       raise RuntimeError
 
     resource_graph = eig0._resource_graph
@@ -360,12 +359,12 @@ class ResourceGraph(object):
       else:
         self.__expandables[id1] = eig1
 
-    before, after = self._split_node(eig0._res, eig0._res)
+    before, after = self._split_node(res)
     self._move_edges(resource_graph._first, before)
     self._move_edges(resource_graph._last, after)
     # Never delete; we must still be able to identify
     # to avoid redundant expansion.
-    self.__processed.add(eig0._res)
+    self.__processed.add(res)
     # XXX Problematic:
     # A dependency is put before a resource (through another dependency),
     # but the resource also calls up the same dependency internally.
