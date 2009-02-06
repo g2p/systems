@@ -405,7 +405,7 @@ class Resource(Expandable, ContractSupportBase):
     return (self.rtype.name, self.__id_attrs)
 
   def _key(self):
-    return (self.rtype, self.__id_attrs, self.__wanted_attrs)
+    return (type(self), self.rtype, self.__id_attrs, self.__wanted_attrs)
 
   def __cmp__(self, other):
     return -cmp(other, self._key())

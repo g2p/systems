@@ -149,7 +149,8 @@ class ResourceGraph(object):
     self._graph.add_edge(node, self._last)
     r = node
     for dep in depends:
-      self.add_dependency(dep, node)
+      depn = self._nodeify(dep)
+      self._add_node_dep(depn, node)
     return r
 
   def add_checkpoint(self, depends=()):
@@ -205,7 +206,7 @@ class ResourceGraph(object):
     if node0 == node1:
       # Disallow self-loops to keep acyclic invariant.
       # Also they don't make sense.
-      raise ValueError
+      raise ValueError(node0)
     rev_path = NX.shortest_path(self._graph, node1, node0)
     if rev_path is not False:
       raise CycleError(rev_path)
@@ -296,6 +297,10 @@ class ResourceGraph(object):
   def _move_edges(self, n0, n1):
     if n0 == n1:
       raise RuntimeError
+    if n0 not in self._graph:
+      raise KeyError
+    if n1 not in self._graph:
+      raise KeyError
     self.require_acyclic()
     # list is used as a temporary
     # add after delete in case of same.
@@ -324,6 +329,7 @@ class ResourceGraph(object):
     if res.identity not in self.__expandables \
         and res.identity not in self.__corefs:
       pass
+      # XXX Can't remember why
       #raise RuntimeError(res)
     corefs = self.__corefs.setdefault(res.identity, list())
     ref = self._add_node(ExpandableByRefNode(res), depends)
@@ -352,7 +358,7 @@ class ResourceGraph(object):
     for n in resource_graph._graph.nodes_iter():
       self._add_node(n)
     for (n0, n1) in resource_graph._graph.edges_iter():
-      self.add_dependency(n0, n1)
+      self._add_node_dep(n0, n1)
 
     for (id1, eig1) in resource_graph.__expandables.iteritems():
       assert eig1._node not in self.__processed
