@@ -66,17 +66,11 @@ class TransitionNode(Node):
 
 
 class ExpandableInGraph(object):
-  """
-  An expandable can't be put directly in a graph;
-  it must be represented by two nodes (before and after).
-  """
-
-  def __init__(self, graph, res, before, after):
+  def __init__(self, graph, res, node):
     if not isinstance(res, Expandable):
       raise TypeError(res, Expandable)
     self._res = res
-    self._before = before
-    self._after = after
+    self._node = node
     # Processing is either expanding or collecting.
     self._processed = False
 
@@ -114,18 +108,6 @@ class ResourceGraph(object):
   def sorted_transitions(self):
     return [n.transition for n in NX.topological_sort(self._graph)
         if isinstance(n, TransitionNode)]
-
-  def iter_sorted_unexpanded_resources(self):
-    for n in NX.topological_sort(self._graph):
-      if isinstance(n, BeforeExpandableNode):
-        res = n._res
-        if not isinstance(res, Resource) \
-            or isinstance(res, CollectibleResource):
-              continue
-        eig = self.__expandables[res.identity]
-        if eig._processed:
-          continue
-        yield res
 
   def iter_unprocessed(self):
     for eig in self.__expandables.itervalues():
@@ -206,7 +188,7 @@ class ResourceGraph(object):
 
   def _add_expandable(self, expandable, depends=()):
     if not isinstance(expandable, Expandable):
-      raise TypeError(expandable, (Resource, Aggregate))
+      raise TypeError(expandable, Expandable)
 
     if expandable.identity in self.__expandables:
       eig = self.__expandables[expandable.identity]
@@ -215,13 +197,9 @@ class ResourceGraph(object):
         return r2
       # Avoid confusion with processed stuff or different depends.
       raise RuntimeError(expandable, r2)
-    before = BeforeExpandableNode(expandable)
-    after = AfterExpandableNode(expandable)
-    self._add_node(before, depends)
-    self._add_node(after)
-    self._add_node_dep(before, after)
+    node = self._add_node(CheckPointNode(), depends)
     self.__expandables[expandable.identity] = \
-        ExpandableInGraph(self, expandable, before, after)
+        ExpandableInGraph(self, expandable, node)
     return expandable
 
   def _add_node_dep(self, node0, node1):
@@ -248,25 +226,21 @@ class ResourceGraph(object):
   def _nodeify(self, thing):
     if isinstance(thing, Node):
       return thing
+    elif isinstance(thing, Expandable):
+      return self.__expandables[thing.identity]._node
     elif isinstance(thing, Transition):
       return self.__tr_nodes[thing]
     else:
       raise TypeError
 
   def add_dependency(self, elem0, elem1):
-    if isinstance(elem0, Expandable):
-      node0 = self.__expandables[elem0.identity]._after
-    else:
-      node0 = self._nodeify(elem0)
-    if isinstance(elem1, Expandable):
-      node1 = self.__expandables[elem1.identity]._before
-    else:
-      node1 = self._nodeify(elem1)
+    node0 = self._nodeify(elem0)
+    node1 = self._nodeify(elem1)
     return self._add_node_dep(node0, node1)
 
   def _is_direct_rconnect(self, r0, r1):
-    s0 = self.__expandables[r0.identity]._after
-    s1 = self.__expandables[r1.identity]._before
+    s0 = self._nodeify(r0)
+    s1 = self._nodeify(r1)
     # shortest_path is also a test for connectedness.
     return bool(NX.shortest_path(self._graph, s0, s1))
 
@@ -326,8 +300,7 @@ class ResourceGraph(object):
 
     for r0 in r0s:
       eig0 = self.__expandables[r0.identity]
-      self._move_edges(eig0._before, eig1._before)
-      self._move_edges(eig0._after, eig1._after)
+      self._move_edges(eig0._node, eig1._node)
       eig0._processed = True
 
   def _move_edges(self, n0, n1):
@@ -344,6 +317,18 @@ class ResourceGraph(object):
       self._graph.add_edge(n1, succ)
     # Can't undo. Invariant will stay broken.
     self.require_acyclic()
+
+  def _split_node(self, n, res):
+    before = self._add_node(BeforeExpandableNode(res))
+    after = self._add_node(AfterExpandableNode(res))
+    self._graph.add_edge(before, after)
+    for pred in list(self._graph.predecessors_iter(n)):
+      self._graph.delete_edge(pred, n)
+      self._graph.add_edge(pred, before)
+    for succ in list(self._graph.successors_iter(n)):
+      self._graph.delete_edge(n, succ)
+      self._graph.add_edge(after, succ)
+    return before, after
 
   def make_reference(self, res, depends=()):
     if res.identity not in self.__expandables \
@@ -388,16 +373,17 @@ class ResourceGraph(object):
       else:
         self.__expandables[id1] = eig1
 
+    before, after = self._split_node(eig0._node, eig0._res)
+    self._move_edges(resource_graph._first, before)
+    self._move_edges(resource_graph._last, after)
+    # Never delete; we must still be able to identify
+    # to avoid redundant expansion.
+    eig0._processed = True
     # XXX Problematic:
     # A dependency is put before a resource (through another dependency),
     # but the resource also calls up the same dependency internally.
     # The problem is, the dependency appears at both sides
     # of resource._before.
-    self._move_edges(resource_graph._first, eig0._before)
-    self._move_edges(resource_graph._last, eig0._after)
-    # Never delete; we must still be able to identify
-    # to avoid redundant expansion.
-    eig0._processed = True
     self.require_acyclic()
 
 
@@ -517,7 +503,6 @@ class Context(object):
       for r in fresh:
         self.__resources.expand_resource(r)
     assert not bool(list(self.__resources.iter_unexpanded_resources()))
-    assert not bool(list(self.__resources.iter_sorted_unexpanded_resources()))
 
   def _expand_aggregates(self):
     for a in self.__resources.iter_unexpanded_aggregates():
