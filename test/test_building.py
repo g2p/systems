@@ -24,8 +24,6 @@ redmine = ensure_resource(gc, 'Redmine',
     path='/var/lib/rails-sites/redmine',
     cluster=cluster,
     depends=[rails_sites])
-gc.realize()
-sys.exit(0)
 
 ensure_transition(gc, 'Command',
     cmdline=['/bin/echo', 'Chatty command is chatty'])
@@ -42,10 +40,12 @@ ensure_resource(gc, 'AptitudePackage', name='python-networkx')
 ensure_resource(gc, 'User',
     name='zorglub', present=False, shell='/bin/true')
 
-u = resource('PgUser', name='user-pfuuit')
-d = ensure_resource(gc, 'PgDatabase', owner=u, name='db-pfuuit')
+u = resource('PgUser', name='user-pfuuit', cluster=cluster)
+d = ensure_resource(gc, 'PgDatabase',
+    owner=u, name='db-pfuuit', cluster=cluster)
 
-ensure_resource(gc, 'SvnWorkingCopy',
+if False:
+  ensure_resource(gc, 'SvnWorkingCopy',
     location=resource('Directory',
       path='/tmp/django-queue-service',
       mode='0755',
