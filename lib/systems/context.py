@@ -12,7 +12,7 @@ from systems.typesystem import EResource, Transition
 __all__ = ('Context', 'global_context', )
 
 
-logger = getLogger(__name__)
+LOGGER = getLogger(__name__)
 
 
 REPR_LIMIT = 32
@@ -29,6 +29,7 @@ class CheckPointNode(Node):
 
 class ExpandableNode(Node):
   def __init__(self, res):
+    super(ExpandableNode, self).__init__()
     if type(self) == ExpandableNode:
       # Abstract class
       raise TypeError
@@ -50,10 +51,11 @@ class GraphLastNode(Node):
 
 class ExpandableByRefNode(Node):
   def __init__(self, res):
+    super(ExpandableByRefNode, self).__init__()
     self._res = res
 
 def describe(thing):
-    return '<%s @ %s>' % (repr(thing)[:REPR_LIMIT], hash(thing))
+  return '<%s @ %s>' % (repr(thing)[:REPR_LIMIT], hash(thing))
 
 node_types = (Node, Transition, Aggregate, CResource, EResource)
 

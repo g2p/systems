@@ -14,8 +14,8 @@ from systems.typesystem import AttrType, ResourceType, EResource
 __all__ = ('register', )
 
 
-def read_contents(id):
-  path = id.id_attrs['path']
+def read_contents(id_attrs):
+  path = id_attrs['path']
   with open(path) as f:
     return f.read()
 

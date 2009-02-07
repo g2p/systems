@@ -4,8 +4,8 @@ from __future__ import absolute_import
 def register():
   from . import command
   command.register()
-  from . import file
-  file.register()
+  from . import files
+  files.register()
   from . import packages
   packages.register()
   from . import postgresql

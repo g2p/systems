@@ -23,14 +23,17 @@ class AptitudePackage(CResource):
     cls.__restype = ResourceType('AptitudePackage', cls,
         id_type={
           'name': AttrType(
+            pytype=str,
             valid_condition=cls.is_valid_pkgname),
           },
         state_type={
           'version': AttrType(
             none_allowed=True,
+            pytype=str,
             valid_condition=cls.is_valid_version),
           'state': AttrType(
             default_value='installed',
+            pytype=str,
             valid_condition=cls.is_valid_state),
           },
         )
@@ -44,8 +47,6 @@ class AptitudePackage(CResource):
 
   @classmethod
   def is_valid_version(cls, version):
-    if version is None:
-      return True
     # From lintian's _valid_version
     # XXX can pass dashes. Check in aptitude source code if it matches.
     # http://www.debian.org/doc/debian-policy/ch-controlfields.html#s-f-Version
@@ -67,10 +68,10 @@ class AptitudePackage(CResource):
     """
 
     state = self.wanted_attrs['state']
+    version = self.wanted_attrs['version']
     r = '%(name)s' % self.id_attrs
-    if state in ('installed', 'held', ) \
-      and self.wanted_attrs['version'] is not None:
-        r += '=%(version)s' % self.attributes
+    if state in ('installed', 'held', ) and version is not None:
+      r += '=' + version
     r += {'installed': '+', 'purged': '_',
         'uninstalled': '-', 'held': '=', }[state]
     return r
@@ -78,6 +79,7 @@ class AptitudePackage(CResource):
 
 class AptitudePackages(Aggregate):
   def __init__(self, packages):
+    super(AptitudePackages, self).__init__()
     self.__packages = packages
 
   def to_aptitude_list(self):
@@ -90,7 +92,7 @@ class AptitudePackages(Aggregate):
     return [p.to_aptitude_string() for p in self.__packages]
 
   def expand_into(self, rg):
-    cmdline=['/usr/bin/aptitude', 'install', '-y', '--', ]
+    cmdline = ['/usr/bin/aptitude', 'install', '-y', '--', ]
     cmdline.extend(self.to_aptitude_list())
     cmd = transition('Command',
         extra_env={ 'DEBIAN_FRONTEND': 'noninteractive', },
@@ -103,8 +105,8 @@ class AptitudePackageCollector(Collector):
   Group several aptitude package operations into one.
   """
 
-  def filter(self, transition):
-    return isinstance(transition, AptitudePackage)
+  def filter(self, collectible):
+    return isinstance(collectible, AptitudePackage)
 
   def collect(self, transitions):
     return AptitudePackages(transitions)

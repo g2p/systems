@@ -40,7 +40,7 @@ class Registry(object):
   def __new__(cls):
     if hasattr(cls, '_singleton'):
       raise RuntimeError('Singleton has already been instanciated')
-    return super(type(cls), cls).__new__(cls)
+    return super(Registry, cls).__new__(cls)
 
   @classmethod
   def get_singleton(cls):

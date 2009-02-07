@@ -1,101 +1,30 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 from __future__ import absolute_import
 
-"""
-http://pastebin.com/f54dd69d6 via http://code.activestate.com/recipes/111286/
-Not exactly what I needed (int() and str() is ugly), but will do.
-"""
+def oct_to_int(octa):
+  """
+  Convert an octal string to an integer.
+  """
 
-BASE2 = "01"
-BASE10 = "0123456789"
-BASE16 = "0123456789ABCDEF"
-BASE62 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz"
-
-def baseconvert(number,fromdigits,todigits):
-    """ converts a "number" between two bases of arbitrary digits
-
-    The input number is assumed to be a string of digits from the
-    fromdigits string (which is in order of smallest to largest
-    digit). The return value is a string of elements from todigits
-    (ordered in the same way). The input and output bases are
-    determined from the lengths of the digit strings. Negative 
-    signs are passed through.
-
-    decimal to binary
-    >>> baseconvert(555,BASE10,BASE2)
-    '1000101011'
-
-    binary to decimal
-    >>> baseconvert('1000101011',BASE2,BASE10)
-    '555'
-
-    integer interpreted as binary and converted to decimal (!)
-    >>> baseconvert(1000101011,BASE2,BASE10)
-    '555'
-
-    base10 to base4
-    >>> baseconvert(99,BASE10,"0123")
-    '1203'
-
-    base4 to base5 (with alphabetic digits)
-    >>> baseconvert(1203,"0123","abcde")
-    'dee'
-
-    base5, alpha digits back to base 10
-    >>> baseconvert('dee',"abcde",BASE10)
-    '99'
-
-    decimal to a base that uses A-Z0-9a-z for its digits
-    >>> baseconvert(257938572394L,BASE10,BASE62)
-    'E78Lxik'
-
-    ..convert back
-    >>> baseconvert('E78Lxik',BASE62,BASE10)
-    '257938572394'
-
-    binary to a base with words for digits (the function cannot convert this back)
-    >>> baseconvert('1101',BASE2,('Zero','One'))
-    'OneOneZeroOne'
-
-    """
-
-    if str(number)[0]=='-':
-        number = str(number)[1:]
-        neg=1
-    else:
-        neg=0
-
-    # make an integer out of the number
-    x=0
-    for digit in str(number):
-       x = x*len(fromdigits) + fromdigits.index(digit)
-    
-    # create the result in base 'len(todigits)'
-    if x == 0:
-        res = todigits[0]
-    else:
-        res=""
-        while x>0:
-            digit = x % len(todigits)
-            res = todigits[digit] + res
-            x = int(x / len(todigits))
-        if neg:
-            res = "-"+res
-
-    return res
-
-OCTAL = "01234567"
-DECIMAL = "0123456789"
-
-def oct_to_int(oct):
-  if not isinstance(oct, str):
+  if not isinstance(octa, str):
     raise TypeError
-  return int(oct, 8)
+  return int(octa, 8)
 
 def int_to_oct(intgr):
+  """
+  Convert an integer to a 0-started octal string.
+
+  Not using the oct builtin because its output changed in python 3.0.
+  """
+
   if not isinstance(intgr, int):
-    raise TypeError
-  oct = '0' + baseconvert(str(intgr), DECIMAL, OCTAL)
-  return oct
+    raise TypeError(intgr, int)
+  if intgr < 0:
+    raise ValueError(intgr)
+  octa = ''
+  while intgr > 0:
+    intgr, mod = divmod(intgr, 8)
+    octa = str(mod) + octa
+  return '0' + octa
 
 

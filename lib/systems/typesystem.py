@@ -7,7 +7,7 @@ from systems.util.contracts import ContractSupportBase, precondition
 from systems.util.datatypes import ImmutableDict, Named
 
 
-logger = getLogger(__name__)
+LOGGER = getLogger(__name__)
 
 
 class AttrType(object):
@@ -119,12 +119,12 @@ class AttrType(object):
       if not self.__valid_condition(val):
         raise ValueError(val)
 
-  def read_value(self, id):
+  def read_value(self, id_attrs):
     """
     Read the current state.
     """
 
-    v = self.__reader(id)
+    v = self.__reader(id_attrs)
     self.require_valid_value(v)
     return v
 
@@ -368,7 +368,7 @@ class Expandable(object):
   """
 
   def before_expand(self, resource_graph):
-    logger.debug('Before expand: %s', self)
+    LOGGER.debug('Before expand: %s', self)
 
   @precondition(before_expand)
   def expand_into(self, resource_graph):
@@ -382,6 +382,7 @@ class Expandable(object):
 class ResourceBase(ContractSupportBase):
   # Make subclasses that implement the abstract stuff.
   def __init__(self, rtype, id_valdict, wanted_valdict):
+    super(ResourceBase, self).__init__()
     if not isinstance(rtype, ResourceType):
       raise TypeError
     self.__rtype = rtype

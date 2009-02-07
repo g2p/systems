@@ -14,7 +14,8 @@ def getresuid():
   ruid = ctypes.c_uint()
   euid = ctypes.c_uint()
   suid = ctypes.c_uint()
-  res = _libc.getresuid(ctypes.byref(ruid), ctypes.byref(euid), ctypes.byref(suid))
+  res = _libc.getresuid(
+      ctypes.byref(ruid), ctypes.byref(euid), ctypes.byref(suid))
   if res:
     raise OSError(_errno.value, os.strerror(_errno.value))
   return (ruid.value, euid.value, suid.value)
@@ -31,7 +32,8 @@ def getresgid():
   rgid = ctypes.c_uint()
   egid = ctypes.c_uint()
   sgid = ctypes.c_uint()
-  res = _libc.getresgid(ctypes.byref(rgid), ctypes.byref(egid), ctypes.byref(sgid))
+  res = _libc.getresgid(
+      ctypes.byref(rgid), ctypes.byref(egid), ctypes.byref(sgid))
   if res:
     raise OSError(_errno.value, os.strerror(_errno.value))
   return (rgid.value, egid.value, sgid.value)

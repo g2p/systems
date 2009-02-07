@@ -14,9 +14,6 @@ class Collector(Named):
   (ie don't have dependencies paths linking them).
   """
 
-  def __init__(self, name):
-    Named.__init__(self, name)
-
   def partition(self, realizables):
     """
     Break up a sequence of collectible transitions into a partition.
