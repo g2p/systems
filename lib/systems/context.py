@@ -85,41 +85,35 @@ class ResourceGraph(object):
     return [n for n in NX.topological_sort(self._graph)
         if isinstance(n, Transition)]
 
-  def iter_unprocessed(self):
-    for res in self.__expandables.itervalues():
-      if res not in self.__processed:
-        yield res
-
   def iter_uncollected_resources(self):
-    for res in self.iter_unprocessed():
-      if isinstance(res, CollectibleResource):
-        yield res
-
-  def iter_unexpanded(self):
-    for res in self.iter_unprocessed():
-      # CollectibleResource isn't really an Expandable despite inheritance
-      if not isinstance(res, CollectibleResource):
-        yield res
+    for nod in self._graph.nodes_iter():
+      if isinstance(nod, CollectibleResource):
+        if not nod in self.__processed:
+          yield nod
 
   def iter_unexpanded_resources(self):
-    for res in self.iter_unexpanded():
-      if isinstance(res, Resource):
-        yield res
+    for nod in self._graph.nodes_iter():
+      if isinstance(nod, Resource) and not isinstance(nod, CollectibleResource):
+        if not nod in self.__processed:
+          yield nod
 
   def iter_unexpanded_aggregates(self):
-    for res in self.iter_unexpanded():
-      if isinstance(res, Aggregate):
-        yield res
+    for agg in self._graph.nodes_iter():
+      if isinstance(agg, Aggregate):
+        if not agg in self.__processed:
+          yield agg
 
-  def has_unexpanded(self):
-    l = list(self.iter_unexpanded())
+  def iter_unprocessed(self):
+    for nod in self.iter_uncollected_resources():
+      yield nod
+    for nod in self.iter_unexpanded_resources():
+      yield nod
+    for nod in self.iter_unexpanded_aggregates():
+      yield nod
+
+  def has_unprocessed(self):
+    l = list(self.iter_unprocessed())
     return bool(l) # Tests for non-emptiness
-
-  def resource_at(self, key):
-    r = self.__expandables[key]
-    if not isinstance(r, Resource):
-      raise TypeError(r, Resource)
-    return r
 
   def require_acyclic(self):
     if not NX.is_directed_acyclic_graph(self._graph):
@@ -330,7 +324,12 @@ class ResourceGraph(object):
     if res in self.__processed:
       raise RuntimeError
 
-    resource_graph = self.__prebound[res.identity]
+    if isinstance(res, Resource):
+      resource_graph = self.__prebound[res.identity]
+    elif isinstance(res, Aggregate):
+      resource_graph = ResourceGraph()
+    else:
+      raise TypeError
     res.expand_into(resource_graph)
     if bool(resource_graph.__processed):
       raise RuntimeError
@@ -487,12 +486,12 @@ class Context(object):
     assert not bool(list(self.__resources.iter_unexpanded_resources()))
 
   def _expand_aggregates(self):
-    for a in self.__resources.iter_unexpanded_aggregates():
+    for a in list(self.__resources.iter_unexpanded_aggregates()):
       self.__resources.expand_resource(a)
     assert not bool(list(self.__resources.iter_unexpanded_aggregates()))
     # Enforce the rule that aggregates can only expand into transitions.
-    if self.__resources.has_unexpanded():
-      raise RuntimeError(list(self.__resources.iter_unexpanded()))
+    if self.__resources.has_unprocessed():
+      raise RuntimeError(list(self.__resources.iter_unprocessed()))
 
   def realize(self):
     """
