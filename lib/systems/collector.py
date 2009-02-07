@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 from systems.util.datatypes import Named
-from systems.typesystem import Resource, Expandable
+from systems.typesystem import ResourceBase, Expandable
 
 
 class Collector(Named):
@@ -39,25 +39,23 @@ class Collector(Named):
 
   def collect(self, transitions):
     """
-    Build one Aggregate from many Resource.
+    Build one Aggregate from many CResource.
     """
 
     raise NotImplementedError('collect')
 
 
-class CollectibleResource(Resource):
+class CResource(ResourceBase):
   """
   A marker class. Those must not be expanded.
   """
 
-  def expand_into(self, resource_graph):
-    # Collectible resources are collected, never expanded.
-    raise RuntimeError
+  pass
 
 
 class Aggregate(Expandable):
   """
-  Apes Resource somewhat.
+  This is expanded once, and stands in for several CResource.
   """
 
   def expand_into(self, resource_graph):
@@ -65,10 +63,4 @@ class Aggregate(Expandable):
     # XXX Caveat:
     # Only add transitions, not resources.
     raise NotImplementedError
-
-  @property
-  def identity(self):
-    # identities do not make much sense here.
-    return self
-
 

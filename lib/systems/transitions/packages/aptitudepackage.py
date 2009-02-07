@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 import re
 
-from systems.collector import Collector, Aggregate, CollectibleResource
+from systems.collector import Collector, Aggregate, CResource
 from systems.registry import Registry
 from systems.typesystem import AttrType, ResourceType
 from systems.dsl import transition
@@ -11,7 +11,7 @@ from systems.dsl import transition
 __all__ = ('register', )
 
 
-class AptitudePackage(CollectibleResource):
+class AptitudePackage(CResource):
   """
   A debian package, managed by aptitude.
 

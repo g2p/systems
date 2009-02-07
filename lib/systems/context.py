@@ -6,9 +6,9 @@ import traceback
 
 import networkx as NX
 
-from systems.collector import Aggregate, CollectibleResource
+from systems.collector import Aggregate, CResource
 from systems.registry import Registry
-from systems.typesystem import Resource, Transition
+from systems.typesystem import EResource, Transition
 
 __all__ = ('Context', 'global_context', )
 
@@ -56,7 +56,7 @@ class ExpandableByRefNode(Node):
 def describe(thing):
     return '<%s @ %s>' % (repr(thing)[:REPR_LIMIT], hash(thing))
 
-node_types = (Node, Transition, Aggregate, CollectibleResource, Resource)
+node_types = (Node, Transition, Aggregate, CResource, EResource)
 
 class ResourceGraph(object):
   """
@@ -72,7 +72,7 @@ class ResourceGraph(object):
     self._first = GraphFirstNode()
     self._last = GraphLastNode()
     self._graph.add_edge(self._first, self._last)
-    # XXX CollectibleResource shouldn't really be expandable.
+    # XXX CResource shouldn't really be expandable.
     self.__expandables = {}
     # A multimap of references.
     self.__corefs = {}
@@ -87,13 +87,13 @@ class ResourceGraph(object):
 
   def iter_uncollected_resources(self):
     for nod in self._graph.nodes_iter():
-      if isinstance(nod, CollectibleResource):
+      if isinstance(nod, CResource):
         if not nod in self.__processed:
           yield nod
 
   def iter_unexpanded_resources(self):
     for nod in self._graph.nodes_iter():
-      if isinstance(nod, Resource) and not isinstance(nod, CollectibleResource):
+      if isinstance(nod, EResource) and not isinstance(nod, CResource):
         if not nod in self.__processed:
           yield nod
 
@@ -151,8 +151,8 @@ class ResourceGraph(object):
     If an identical resource exists, it is returned.
     """
 
-    if not isinstance(resource, (CollectibleResource, Resource)):
-      raise TypeError(resource, (CollectibleResource, Resource))
+    if not isinstance(resource, (CResource, EResource)):
+      raise TypeError(resource, (CResource, EResource))
 
     if resource.identity in self.__expandables:
       # We have this id already.
@@ -249,8 +249,6 @@ class ResourceGraph(object):
 
     for r0 in r0s:
       r0 = self._intern(r0)
-      if r0.identity == r1.identity:
-        raise ValueError(r0)
       if r0 in self.__processed:
         raise RuntimeError
 
@@ -318,7 +316,7 @@ class ResourceGraph(object):
     if res in self.__processed:
       raise RuntimeError
 
-    if isinstance(res, Resource):
+    if isinstance(res, EResource):
       resource_graph = self.__prebound[res.identity]
     elif isinstance(res, Aggregate):
       resource_graph = ResourceGraph()
@@ -344,7 +342,7 @@ class ResourceGraph(object):
       if id1 in self.__expandables:
         # Pass by reference if you must use the same resource
         # in different contexts.
-        raise RuntimeError('Resource collision.', res, res1)
+        raise RuntimeError('ResourceBase collision.', res, res1)
       else:
         self.__expandables[id1] = res1
 

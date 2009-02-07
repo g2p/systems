@@ -5,7 +5,7 @@ import subprocess
 
 from systems.dsl import resource, transition
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource
+from systems.typesystem import AttrType, ResourceType, EResource
 
 
 def is_valid_arg(st):
@@ -29,7 +29,7 @@ def read_present(id_attrs):
   else:
     raise subprocess.CalledProcessError(r, '/usr/bin/gem')
 
-class RubyGem(Resource):
+class RubyGem(EResource):
   """
   A particular version of a ruby gem.
   """

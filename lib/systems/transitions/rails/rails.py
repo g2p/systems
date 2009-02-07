@@ -5,13 +5,13 @@ import yaml
 
 from systems.dsl import resource, transition
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource
+from systems.typesystem import AttrType, ResourceType, EResource
 
 
 def is_valid_user(user):
   return user.wanted_attrs['present'] is True
 
-class Rails(Resource):
+class Rails(EResource):
   """
   A rails application.
   """

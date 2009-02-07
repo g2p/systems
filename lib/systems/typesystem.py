@@ -110,8 +110,8 @@ class AttrType(object):
     if self.__rtype is not None:
       from systems.registry import Registry
       rtype = Registry.get_singleton().resource_types.lookup(self.__rtype)
-      if not isinstance(val, Resource):
-        raise TypeError(val, Resource)
+      if not isinstance(val, ResourceBase):
+        raise TypeError(val, ResourceBase)
       if val.rtype != rtype:
         raise TypeError(val.rtype, rtype)
 
@@ -195,7 +195,7 @@ class ResourceType(Named):
 
     name is the name that can be used to look us up once we are registered.
     instance_class is the class that will be used to create Resources
-    of this type. It must be a subclass of Resource.
+    of this type. It must be a subclass of ResourceBase.
     id_type is the dictionary of AttrType from which we will build
     our identity type.
     state_type is like id_type for our state type.
@@ -203,7 +203,7 @@ class ResourceType(Named):
     if passed identity attributes.
     """
 
-    if not issubclass(instance_class, Resource):
+    if not issubclass(instance_class, ResourceBase):
       raise TypeError
     Named.__init__(self, name)
     self.__instance_class = instance_class
@@ -358,13 +358,8 @@ class ReadAttrs(object):
     return val
 
 
-class Identifiable(object):
-  @property
-  def identity(self):
-    raise NotImplementedError
 
-
-class Expandable(Identifiable):
+class Expandable(object):
   """
   Something that can expand itself into more elementary components
   in a resource graph.
@@ -380,7 +375,7 @@ class Expandable(Identifiable):
     raise NotImplementedError
 
 
-class Resource(Expandable, ContractSupportBase):
+class ResourceBase(ContractSupportBase):
   # Make subclasses that implement the abstract stuff.
   def __init__(self, rtype, id_valdict, wanted_valdict):
     if not isinstance(rtype, ResourceType):
@@ -445,6 +440,8 @@ class Resource(Expandable, ContractSupportBase):
     for item in self.wanted_attrs.iter_passed_by_ref():
       yield item
 
+
+class EResource(ResourceBase, Expandable):
   def before_expand(self, resource_graph):
     logger.debug('Before expand: %s', self)
 

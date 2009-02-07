@@ -7,7 +7,7 @@ import re
 
 from systems.dsl import transition
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource
+from systems.typesystem import AttrType, ResourceType, EResource
 
 __all__ = ('register', )
 
@@ -29,7 +29,7 @@ def read_attrs(id_attrs):
       'shell': shell,
       }
 
-class User(Resource):
+class User(EResource):
   """
   A system user managed on the local system (PAM, /etc/passwd and friends)
 

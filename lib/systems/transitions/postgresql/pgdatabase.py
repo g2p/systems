@@ -5,7 +5,7 @@ import re
 
 from systems.dsl import resource
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource
+from systems.typesystem import AttrType, ResourceType, EResource
 from systems.util.templates import build_and_render
 
 __all__ = ('register', )
@@ -20,7 +20,7 @@ def is_valid_dbname(name):
   # We could encode stuff using dashes, but it's too much trouble.
   return re.match('^[a-z0-9-]*$', name)
 
-class PgDatabase(Resource):
+class PgDatabase(EResource):
   def expand_into(self, rg):
     owner = self.wanted_attrs['owner']
     cluster = self.id_attrs['cluster']

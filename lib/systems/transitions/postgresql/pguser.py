@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource
+from systems.typesystem import AttrType, ResourceType, EResource
 
 __all__ = ('register', )
 
@@ -29,7 +29,7 @@ def drop_user_trans(id_attrs):
         '--', name,
         ], )
 
-class PgUser(Resource):
+class PgUser(EResource):
   def expand_into(self, rg):
     p0, p1 = self.read_attrs()['present'], self.wanted_attrs['present']
     if (p0, p1) == (False, True):

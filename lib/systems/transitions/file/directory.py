@@ -8,7 +8,7 @@ import stat
 from . import fileperms
 
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource
+from systems.typesystem import AttrType, ResourceType, EResource
 
 __all__ = ('register', )
 
@@ -21,7 +21,7 @@ def read_present(id_attrs):
   return fileperms.read_present(id_attrs, stat.S_ISDIR)
 
 
-class Directory(fileperms.FilePermsMixin, Resource):
+class Directory(fileperms.FilePermsMixin, EResource):
   """
   A directory in the filesystem.
   """

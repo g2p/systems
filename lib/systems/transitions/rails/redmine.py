@@ -3,10 +3,10 @@ from __future__ import absolute_import
 
 from systems.dsl import resource
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, Resource
+from systems.typesystem import AttrType, ResourceType, EResource
 
 
-class Redmine(Resource):
+class Redmine(EResource):
   """
   A redmine instance.
   """
