@@ -58,19 +58,6 @@ def describe(thing):
 
 node_types = (Node, Transition, Aggregate, CollectibleResource, Resource)
 
-class ExpandableInGraph(object):
-  def __init__(self, graph, res):
-    if not isinstance(res, (CollectibleResource, Resource)):
-      raise TypeError(res, (CollectibleResource, Resource))
-    self._res = res
-
-    self._resource_graph = ResourceGraph()
-    for (name, arg) in res.iter_passed_by_ref():
-      # arg_refnode will be present in both graphs.
-      arg_refnode = graph.make_reference(arg)
-      self._resource_graph._add_node(arg_refnode)
-      res.pass_by_ref(name, arg_refnode)
-
 class ResourceGraph(object):
   """
   A graph of resources and transitions linked by dependencies.
@@ -91,15 +78,17 @@ class ResourceGraph(object):
     self.__corefs = {}
     # What nodes were processed (meaning expanding or collecting)
     self.__processed = set()
+    # Pre-bound args pased by ref. Allow putting extra depends on them.
+    self.__prebound = {}
 
   def sorted_transitions(self):
     return [n for n in NX.topological_sort(self._graph)
         if isinstance(n, Transition)]
 
   def iter_unprocessed(self):
-    for eig in self.__expandables.itervalues():
-      if eig._res not in self.__processed:
-        yield eig._res
+    for res in self.__expandables.itervalues():
+      if res not in self.__processed:
+        yield res
 
   def iter_uncollected_resources(self):
     for res in self.iter_unprocessed():
@@ -127,7 +116,7 @@ class ResourceGraph(object):
     return bool(l) # Tests for non-emptiness
 
   def resource_at(self, key):
-    r = self.__expandables[key]._res
+    r = self.__expandables[key]
     if not isinstance(r, Resource):
       raise TypeError(r, Resource)
     return r
@@ -172,14 +161,19 @@ class ResourceGraph(object):
       raise TypeError(resource, (CollectibleResource, Resource))
 
     if resource.identity in self.__expandables:
-      eig = self.__expandables[resource.identity]
-      r2 = eig._res
+      r2 = self._intern(resource)
       if resource == r2:
         return r2
       # Avoid confusion with processed stuff or different depends.
       raise RuntimeError(resource, r2)
-    self.__expandables[resource.identity] = \
-        ExpandableInGraph(self, resource)
+    prebound = ResourceGraph()
+    for (name, arg) in resource.iter_passed_by_ref():
+      # arg_refnode will be present in both graphs.
+      arg_refnode = self.make_reference(arg)
+      prebound._add_node(arg_refnode)
+      resource.pass_by_ref(name, arg_refnode)
+    self.__prebound[resource.identity] = prebound
+    self.__expandables[resource.identity] = resource
     return self._add_node(resource, depends)
 
   def _add_node_dep(self, node0, node1):
@@ -209,7 +203,7 @@ class ResourceGraph(object):
     if thing not in self._graph:
       raise KeyError(node)
     if isinstance(thing, (CollectibleResource, Resource)):
-      assert thing == self.__expandables[thing.identity]._res
+      assert thing == self.__expandables[thing.identity]
     return thing
 
   def add_dependency(self, elem0, elem1):
@@ -331,13 +325,15 @@ class ResourceGraph(object):
     """
 
     res = self._intern(res)
-    eig0 = self.__expandables[res.identity]
 
+    # We're processing from the outside in.
     if res in self.__processed:
       raise RuntimeError
 
-    resource_graph = eig0._resource_graph
+    resource_graph = self.__prebound[res.identity]
     res.expand_into(resource_graph)
+    if bool(resource_graph.__processed):
+      raise RuntimeError
 
     # Do not skip sentinels.
     for n in resource_graph._graph.nodes_iter():
@@ -345,14 +341,19 @@ class ResourceGraph(object):
     for (n0, n1) in resource_graph._graph.edges_iter():
       self._add_node_dep(n0, n1)
 
-    for (id1, eig1) in resource_graph.__expandables.iteritems():
-      assert eig1._res not in self.__processed
+    for (id1, rg1) in resource_graph.__prebound.iteritems():
+      if id1 in self.__prebound:
+        raise RuntimeError
+      self.__prebound[id1] = rg1
+
+    for (id1, res1) in resource_graph.__expandables.iteritems():
+      assert res1 not in self.__processed
       if id1 in self.__expandables:
         # Pass by reference if you must use the same resource
         # in different contexts.
-        raise RuntimeError('Resource collision.', res, eig1._res)
+        raise RuntimeError('Resource collision.', res, res1)
       else:
-        self.__expandables[id1] = eig1
+        self.__expandables[id1] = res1
 
     before, after = self._split_node(res)
     self._move_edges(resource_graph._first, before)
