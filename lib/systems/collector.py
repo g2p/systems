@@ -59,8 +59,6 @@ class Aggregate(Expandable):
   """
 
   def expand_into(self, resource_graph):
-    # Override this.
-    # XXX Caveat:
-    # Only add transitions, not resources.
+    # Caveat: Only add transitions, not resources.
     raise NotImplementedError
 

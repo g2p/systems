@@ -72,7 +72,7 @@ class ResourceGraph(object):
     self._first = GraphFirstNode()
     self._last = GraphLastNode()
     self._graph.add_edge(self._first, self._last)
-    # XXX CResource shouldn't really be expandable.
+    # Contains CResource and EResource, despite the name.
     self.__expandables = {}
     # A multimap of references.
     self.__corefs = {}
@@ -352,7 +352,7 @@ class ResourceGraph(object):
     # Never delete; we must still be able to identify
     # to avoid redundant expansion.
     self.__processed.add(res)
-    # XXX Problematic:
+    # What may break the invariant:
     # A dependency is put before a resource (through another dependency),
     # but the resource also calls up the same dependency internally.
     # The problem is, the dependency appears at both sides
