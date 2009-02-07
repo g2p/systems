@@ -36,42 +36,49 @@ class Rails(EResource):
     cluster_ref = rg.refs_received['cluster']
     run_user = self.wanted_attrs['run_user']
     run_user_name = run_user.id_attrs['name']
-    # XXX Not using maint_user for now, rails isn't designed for this.
-    maint_user = run_user
+    run_user_ref = rg.refs_received['run_user']
+    # XXX Need to give an ACL from db_maint_user to db_run_user.
     maint_user = self.wanted_attrs['maint_user']
     maint_user_name = maint_user.id_attrs['name']
+    maint_user_ref = rg.refs_received['maint_user']
 
     # Same name means 'local ident sameuser' auth will work.
-    # Problem: how can I give a different user for migrations
-    # and normal connections, in database.yml ?
-    db_user = rg.add_resource(resource('PgUser',
+    db_run_user = rg.add_resource(resource('PgUser',
       name=run_user_name,
+      cluster=cluster_ref,
+      ))
+
+    db_maint_user = rg.add_resource(resource('PgUser',
+      name=maint_user_name,
       cluster=cluster_ref,
       ))
 
     db_conf_tree = {}
     migs = []
     for env in ('production', 'test', 'development', ):
+      mig_env = env + '_migrate'
       db_name = 'rails-%s-%s' % (name, env, )
       db_conf_tree[env] = {
           'adapter': 'postgresql',
           'database': db_name,
           'username': run_user_name,
           }
+      db_conf_tree[mig_env] = db_conf_tree[env]
+      db_conf_tree[mig_env]['username'] = maint_user_name
       db = rg.add_resource(resource('PgDatabase',
         name=db_name,
-        owner=db_user,
+        owner=db_maint_user,
         cluster=cluster_ref,
         ))
       # Testing for db:version retcode doesn't work anymore.
       mig = rg.add_transition(transition('Command',
         cmdline=['/usr/bin/rake', 'db:migrate'],
-        username=run_user_name,
-        extra_env={ 'RAILS_ENV': env, },
+        username=maint_user_name,
+        extra_env={ 'RAILS_ENV': mig_env, },
         cwd=location.id_attrs['path'],
         ),
         depends=(
-          rg.refs_received['run_user'],
+          maint_user_ref,
           rg.refs_received['location'],
           pkgs,
           db,
