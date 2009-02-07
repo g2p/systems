@@ -8,7 +8,7 @@ import networkx as NX
 
 from systems.collector import Aggregate, CollectibleResource
 from systems.registry import Registry
-from systems.typesystem import Resource, Transition, Expandable
+from systems.typesystem import Resource, Transition
 
 __all__ = ('Context', 'global_context', )
 
@@ -56,12 +56,12 @@ class ExpandableByRefNode(Node):
 def describe(thing):
     return '<%s @ %s>' % (repr(thing)[:REPR_LIMIT], hash(thing))
 
-node_types = (Node, Transition, Expandable)
+node_types = (Node, Transition, Aggregate, CollectibleResource, Resource)
 
 class ExpandableInGraph(object):
   def __init__(self, graph, res):
-    if not isinstance(res, Expandable):
-      raise TypeError(res, Expandable)
+    if not isinstance(res, (Aggregate, CollectibleResource, Resource)):
+      raise TypeError(res, (Aggregate, CollectibleResource, Resource))
     self._res = res
 
     self._resource_graph = ResourceGraph()
@@ -173,8 +173,8 @@ class ResourceGraph(object):
     return res
 
   def _add_expandable(self, expandable, depends=()):
-    if not isinstance(expandable, Expandable):
-      raise TypeError(expandable, Expandable)
+    if not isinstance(expandable, (Aggregate, CollectibleResource, Resource)):
+      raise TypeError(expandable, (Aggregate, CollectibleResource, Resource))
 
     if expandable.identity in self.__expandables:
       eig = self.__expandables[expandable.identity]
@@ -213,7 +213,7 @@ class ResourceGraph(object):
       raise TypeError
     if thing not in self._graph:
       raise KeyError(node)
-    if isinstance(thing, Expandable):
+    if isinstance(thing, (Aggregate, CollectibleResource, Resource)):
       assert thing == self.__expandables[thing.identity]._res
     return thing
 
