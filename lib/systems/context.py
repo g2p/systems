@@ -170,8 +170,8 @@ class ResourceGraph(object):
     If an identical resource exists, it is returned.
     """
 
-    if not isinstance(resource, (Aggregate, CollectibleResource, Resource)):
-      raise TypeError(resource, (Aggregate, CollectibleResource, Resource))
+    if not isinstance(resource, (CollectibleResource, Resource)):
+      raise TypeError(resource, (CollectibleResource, Resource))
 
     if resource.identity in self.__expandables:
       eig = self.__expandables[resource.identity]
