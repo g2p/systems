@@ -4,17 +4,17 @@ from __future__ import with_statement
 
 import sys
 import logging
+import runpy
 
 # Set up a default handler that writes to stderr.
 logging.basicConfig(level=logging.DEBUG)
 
 import systems.context
-import systems.transitions
 from systems.dsl import resource, ensure_resource, ensure_transition
 from systems.util.templates import build_and_render
 
 gc = systems.context.global_context()
-systems.transitions.register()
+runpy.run_module('systems.transitions.__init__')['register']()
 
 cluster = ensure_resource(gc, 'PgCluster')
 rails_sites = ensure_resource(gc, 'Directory',
