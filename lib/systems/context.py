@@ -155,11 +155,9 @@ class ResourceGraph(object):
       raise TypeError(resource, (CollectibleResource, Resource))
 
     if resource.identity in self.__expandables:
-      r2 = self._intern(resource)
-      if resource == r2:
-        return r2
-      # Avoid confusion with processed stuff or different depends.
-      raise RuntimeError(resource, r2)
+      # We have this id already.
+      # Either it's the exact same resource, or a KeyError is thrown.
+      return self._intern(resource)
     prebound = ResourceGraph()
     for (name, arg) in resource.iter_passed_by_ref():
       # arg_refnode will be present in both graphs.
@@ -196,8 +194,6 @@ class ResourceGraph(object):
       raise TypeError
     if thing not in self._graph:
       raise KeyError(node)
-    if isinstance(thing, (CollectibleResource, Resource)):
-      assert thing == self.__expandables[thing.identity]
     return thing
 
   def add_dependency(self, elem0, elem1):
@@ -251,8 +247,6 @@ class ResourceGraph(object):
     # For our use case (collectors), we could allow paths provided they are
     # internal to r0s. This introduces self-loops that we would then remove.
 
-    if r1.identity in self.__expandables:
-      raise ValueError
     for r0 in r0s:
       r0 = self._intern(r0)
       if r0.identity == r1.identity:
