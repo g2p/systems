@@ -56,15 +56,12 @@ class Rails(EResource):
     db_conf_tree = {}
     migs = []
     for env in ('production', 'test', 'development', ):
-      mig_env = env + '_migrate'
       db_name = 'rails-%s-%s' % (name, env, )
       db_conf_tree[env] = {
           'adapter': 'postgresql',
           'database': db_name,
-          'username': run_user_name,
+          'username': maint_user_name,
           }
-      db_conf_tree[mig_env] = db_conf_tree[env]
-      db_conf_tree[mig_env]['username'] = maint_user_name
       db = rg.add_resource(resource('PgDatabase',
         name=db_name,
         owner=db_maint_user,
@@ -74,7 +71,7 @@ class Rails(EResource):
       mig = rg.add_transition(transition('Command',
         cmdline=['/usr/bin/rake', 'db:migrate'],
         username=maint_user_name,
-        extra_env={ 'RAILS_ENV': mig_env, },
+        extra_env={ 'RAILS_ENV': env, },
         cwd=location.id_attrs['path'],
         ),
         depends=(
