@@ -60,13 +60,11 @@ node_types = (Node, Transition, Aggregate, CollectibleResource, Resource)
 
 class ExpandableInGraph(object):
   def __init__(self, graph, res):
-    if not isinstance(res, (Aggregate, CollectibleResource, Resource)):
-      raise TypeError(res, (Aggregate, CollectibleResource, Resource))
+    if not isinstance(res, (CollectibleResource, Resource)):
+      raise TypeError(res, (CollectibleResource, Resource))
     self._res = res
 
     self._resource_graph = ResourceGraph()
-    if isinstance(res, Aggregate):
-      return
     for (name, arg) in res.iter_passed_by_ref():
       # arg_refnode will be present in both graphs.
       arg_refnode = graph.make_reference(arg)
