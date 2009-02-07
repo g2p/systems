@@ -41,7 +41,8 @@ ensure_resource(gc, 'User',
     name='zorglub', present=False, shell='/bin/true')
 
 u = resource('PgUser', name='user-pfuuit', cluster=cluster)
-d = ensure_resource(gc, 'PgDatabase',
+if False:
+  d = ensure_resource(gc, 'PgDatabase',
     owner=u, name='db-pfuuit', cluster=cluster)
 
 if False:
@@ -72,7 +73,7 @@ def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
       depends=(pkg, usr)
       )
 
-test_gitosis('g2p-moulinex.pub')
+#test_gitosis('g2p-moulinex.pub')
 
 gc.realize()
 

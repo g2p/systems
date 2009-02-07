@@ -15,14 +15,17 @@ __all__ = ('Context', 'global_context', )
 LOGGER = getLogger(__name__)
 
 
-REPR_LIMIT = 32
+DESC_LIMIT = 48
+
+def describe(thing):
+  return '%s @ %s' % (str(thing)[:DESC_LIMIT], hash(thing))
 
 class CycleError(Exception):
   pass
 
 class Node(object):
   def __repr__(self):
-    return '<%s @ %s>' % (type(self).__name__, hash(self))
+    return '<%s>' % type(self).__name__
 
 class CheckPointNode(Node):
   pass
@@ -37,11 +40,15 @@ class ExpandableNode(Node):
 
 class BeforeExpandableNode(ExpandableNode):
   def __repr__(self):
-    return '<Before %s @ %s>' % (repr(self._res)[:REPR_LIMIT], hash(self))
+    return '<%s>' % self
+  def __str__(self):
+    return 'Before %s' % self._res
 
 class AfterExpandableNode(ExpandableNode):
   def __repr__(self):
-    return '<After %s @ %s>' % (repr(self._res)[:REPR_LIMIT], hash(self))
+    return '<%s>' % self
+  def __str__(self):
+    return 'After %s' % self._res
 
 class GraphFirstNode(Node):
   pass
@@ -53,9 +60,6 @@ class ExpandableByRefNode(Node):
   def __init__(self, res):
     super(ExpandableByRefNode, self).__init__()
     self._res = res
-
-def describe(thing):
-  return '<%s @ %s>' % (repr(thing)[:REPR_LIMIT], hash(thing))
 
 node_types = (Node, Transition, Aggregate, CResource, EResource)
 
@@ -216,6 +220,8 @@ class ResourceGraph(object):
     return self.draw_agraph(fname)
 
   def draw_agraph(self, fname):
+    names = dict((node, { 'label': describe(node)})
+        for node in self._graph.nodes_iter())
     g = NX.to_agraph(self._graph, {
         'graph': {
           'nodesep': '0.2',
@@ -225,7 +231,8 @@ class ResourceGraph(object):
         'node': {
           'shape': 'box',
           },
-        })
+        },
+        names)
     g.layout(prog='dot')
     g.draw(fname)
 
@@ -277,6 +284,7 @@ class ResourceGraph(object):
     for succ in list(self._graph.successors_iter(n0)):
       self._graph.delete_edge(n0, succ)
       self._graph.add_edge(n1, succ)
+    self._graph.delete_node(n0)
     # Can't undo. Invariant will stay broken.
     self.require_acyclic()
 
@@ -290,6 +298,7 @@ class ResourceGraph(object):
     for succ in list(self._graph.successors_iter(res)):
       self._graph.delete_edge(res, succ)
       self._graph.add_edge(after, succ)
+    self._graph.delete_node(res)
     return before, after
 
   def make_reference(self, res, depends=()):
@@ -348,11 +357,9 @@ class ResourceGraph(object):
         self.__expandables[id1] = res1
 
     before, after = self._split_node(res)
+    self.__processed.add(res)
     self._move_edges(resource_graph._first, before)
     self._move_edges(resource_graph._last, after)
-    # Never delete; we must still be able to identify
-    # to avoid redundant expansion.
-    self.__processed.add(res)
     # What may break the invariant:
     # A dependency is put before a resource (through another dependency),
     # but the resource also calls up the same dependency internally.
