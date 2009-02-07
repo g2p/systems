@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 
 from logging import getLogger
-import traceback
 
 import networkx as NX
 
@@ -193,7 +192,7 @@ class ResourceGraph(object):
     if not isinstance(thing, node_types):
       raise TypeError
     if thing not in self._graph:
-      raise KeyError(node)
+      raise KeyError(thing)
     return thing
 
   def add_dependency(self, elem0, elem1):
