@@ -4,7 +4,7 @@ from __future__ import absolute_import
 import re
 
 from systems.collector import Collector, Aggregate, CResource
-from systems.registry import Registry
+from systems.registry import get_registry
 from systems.typesystem import AttrType, ResourceType
 from systems.dsl import transition
 
@@ -37,7 +37,7 @@ class AptitudePackage(CResource):
             valid_condition=cls.is_valid_state),
           },
         )
-    Registry.get_singleton().resource_types.register(cls.__restype)
+    get_registry().resource_types.register(cls.__restype)
 
   @classmethod
   def is_valid_pkgname(cls, name):
@@ -113,7 +113,7 @@ class AptitudePackageCollector(Collector):
 
   @classmethod
   def register(cls):
-    Registry.get_singleton().collectors \
+    get_registry().collectors \
         .register(cls('AptitudePackageCollector'))
 
 def register():

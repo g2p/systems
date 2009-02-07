@@ -8,7 +8,7 @@ import stat
 
 from . import fileperms
 
-from systems.registry import Registry
+from systems.registry import get_registry
 from systems.typesystem import AttrType, ResourceType, EResource
 
 __all__ = ('register', )
@@ -86,6 +86,6 @@ def register():
           valid_condition=fileperms.is_valid_groupname,
           pytype=str),
         })
-  Registry.get_singleton().resource_types.register(restype)
+  get_registry().resource_types.register(restype)
 
 

@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 from systems.dsl import resource, transition
-from systems.registry import Registry
+from systems.registry import get_registry
 from systems.typesystem import AttrType, ResourceType, EResource
 from systems.util.templates import build_and_render
 
@@ -86,6 +86,6 @@ def register():
         default_value=True,
         pytype=bool),
       })
-  Registry.get_singleton().resource_types.register(restype)
+  get_registry().resource_types.register(restype)
 
 

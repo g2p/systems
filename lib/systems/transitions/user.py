@@ -6,7 +6,7 @@ import pwd
 import re
 
 from systems.dsl import transition
-from systems.registry import Registry
+from systems.registry import get_registry
 from systems.typesystem import AttrType, ResourceType, EResource
 
 __all__ = ('register', )
@@ -56,7 +56,7 @@ class User(EResource):
           },
         global_reader=read_attrs,
         )
-    Registry.get_singleton().resource_types.register(cls.__restype)
+    get_registry().resource_types.register(cls.__restype)
 
   @classmethod
   def is_valid_username(cls, name):

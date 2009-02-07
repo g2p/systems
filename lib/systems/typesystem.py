@@ -133,8 +133,8 @@ class RefAttrType(AttrType):
     return self.__rtypename
 
   def _rtype(self):
-    from systems.registry import Registry
-    return Registry.get_singleton().resource_types.lookup(self.rtypename)
+    from systems.registry import get_registry
+    return get_registry().resource_types.lookup(self.rtypename)
 
   def require_valid_value(self, val):
     super(RefAttrType, self).require_valid_value(val)

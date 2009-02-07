@@ -6,6 +6,9 @@ from systems.typesystem import ResourceType, TransitionType
 from systems.collector import Collector
 
 
+__all__ = ( 'get_registry', )
+
+
 class RegistryDict(object):
   """
   A registry for named items.
@@ -43,14 +46,14 @@ class Registry(object):
     return super(Registry, cls).__new__(cls)
 
   @classmethod
-  def get_singleton(cls):
+  def global_instance(cls):
     """
-    Get the singleton instance.
+    Get the "singleton" instance.
     """
 
-    if not hasattr(cls, '_singleton'):
-      setattr(cls, '_singleton', cls())
-    return getattr(cls, '_singleton')
+    if not hasattr(cls, '_global_instance'):
+      setattr(cls, '_global_instance', cls())
+    return getattr(cls, '_global_instance')
 
   def __init__(self):
     self.__resource_types = RegistryDict(ResourceType)
@@ -68,4 +71,9 @@ class Registry(object):
   @property
   def collectors(self):
     return self.__collectors
+
+
+def get_registry():
+  return Registry.global_instance()
+
 

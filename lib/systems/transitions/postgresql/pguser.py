@@ -1,7 +1,7 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 from __future__ import absolute_import
 
-from systems.registry import Registry
+from systems.registry import get_registry
 from systems.typesystem import AttrType, RefAttrType, ResourceType, EResource
 
 __all__ = ('register', )
@@ -59,6 +59,6 @@ def register():
           pytype=bool,
           reader=read_present),
         })
-  Registry.get_singleton().resource_types.register(restype)
+  get_registry().resource_types.register(restype)
 
 

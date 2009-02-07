@@ -4,7 +4,7 @@ from __future__ import absolute_import
 import yaml
 
 from systems.dsl import resource, transition
-from systems.registry import Registry
+from systems.registry import get_registry
 from systems.typesystem import AttrType, RefAttrType, ResourceType, EResource
 
 
@@ -81,6 +81,16 @@ class Rails(EResource):
           db,
           ))
       migs.append(mig)
+    tmp_dirs = rg.add_transition(transition('Command',
+      cmdline=['/usr/bin/rake', 'tmp:create'],
+      username=maint_user_name,
+      cwd=location.id_attrs['path'],
+      ),
+      depends=(
+        maint_user_ref,
+        rg.refs_received['location'],
+        pkgs,
+        ))
 
     db_conf_str = yaml.safe_dump(db_conf_tree, default_flow_style=False)
     db_conf_file = rg.add_resource(resource('PlainFile',
@@ -117,6 +127,6 @@ def register():
       'cluster': RefAttrType(
         rtype='PgCluster'),
       })
-  Registry.get_singleton().resource_types.register(restype)
+  get_registry().resource_types.register(restype)
 
 

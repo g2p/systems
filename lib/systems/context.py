@@ -6,7 +6,7 @@ from logging import getLogger
 import networkx as NX
 
 from systems.collector import Aggregate, CResource
-from systems.registry import Registry
+from systems.registry import get_registry
 from systems.typesystem import EResource, Transition, ResourceRef
 from systems.util.datatypes import ImmutableDict
 
@@ -250,9 +250,9 @@ class ResourceGraph(object):
           },
         },
         names)
+    g.write(fname + '.dot')
     g.layout(prog='dot')
     g.draw(fname + '.svg')
-    g.write(fname + '.dot')
 
   def draw_matplotlib(self, fname):
     # Pyplot is stateful and awkward to use.
@@ -478,7 +478,7 @@ class Context(object):
             return True
       return False
 
-    reg = Registry.get_singleton()
+    reg = get_registry()
     for collector in reg.collectors:
       # Pre-partition is made of parts acceptable for the collector.
       pre_partition = collector.partition(
@@ -534,15 +534,21 @@ class Context(object):
     for t in self.__resources.sorted_transitions():
       t.realize()
 
+  @classmethod
+  def global_instance(cls):
+    """
+    Get the "singleton" instance.
+    """
 
-__global_context = None
+    if not hasattr(cls, '_global_instance'):
+      setattr(cls, '_global_instance', cls())
+    return getattr(cls, '_global_instance')
+
+
 def global_context():
   """
   The global instance.
   """
 
-  global __global_context
-  if __global_context is None:
-    __global_context = Context()
-  return __global_context
+  return Context.global_instance()
 

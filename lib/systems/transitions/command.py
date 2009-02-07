@@ -6,7 +6,7 @@ import os
 import pwd
 import subprocess
 
-from systems.registry import Registry
+from systems.registry import get_registry
 from systems.typesystem import AttrType, TransitionType, Transition
 from systems.util.uid import drop_privs_permanently
 
@@ -62,7 +62,7 @@ class Command(Transition):
             default_value='',
             ),
           })
-    Registry.get_singleton().transition_types.register(cls.__restype)
+    get_registry().transition_types.register(cls.__restype)
 
   @classmethod
   def is_valid_username(cls, username):

@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 import types
 
-from systems.registry import Registry
+from systems.registry import get_registry
 from systems.typesystem import AttrType, TransitionType, Transition
 
 __all__ = ('register', )
@@ -32,7 +32,7 @@ class PythonCode(Transition):
           'retval': AttrType(
             none_allowed=True),
           })
-    Registry.get_singleton().transition_types.register(cls.__type)
+    get_registry().transition_types.register(cls.__type)
 
   def realize_impl(self):
     f = self.instr_attrs['function']
