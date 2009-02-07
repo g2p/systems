@@ -158,6 +158,11 @@ class ResourceGraph(object):
       raise TypeError(transition, Transition)
     return self._add_node(transition, depends)
 
+  def _add_aggregate(self, aggregate, depends=()):
+    if not isinstance(aggregate, Aggregate):
+      raise TypeError(aggregate, Aggregate)
+    return self._add_node(aggregate, depends)
+
   def add_resource(self, resource, depends=()):
     """
     Add a resource.
@@ -205,7 +210,7 @@ class ResourceGraph(object):
       raise TypeError
     if thing not in self._graph:
       raise KeyError(node)
-    if isinstance(thing, (Aggregate, CollectibleResource, Resource)):
+    if isinstance(thing, (CollectibleResource, Resource)):
       assert thing == self.__expandables[thing.identity]._res
     return thing
 
@@ -269,7 +274,7 @@ class ResourceGraph(object):
       if r0 in self.__processed:
         raise RuntimeError
 
-    r1 = self.add_resource(r1)
+    r1 = self._add_aggregate(r1)
     r1 = self._intern(r1)
 
     for r0 in r0s:
