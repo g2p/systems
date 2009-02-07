@@ -16,10 +16,10 @@ __all__ = ('Context', 'global_context', )
 LOGGER = getLogger(__name__)
 
 
-DESC_LIMIT = 48
+DESC_LIMIT = 64
 
 def describe(thing):
-  return '%s @ %s' % (str(thing)[:DESC_LIMIT], hash(thing))
+  return '%s' % str(thing)[:DESC_LIMIT]
 
 class CycleError(Exception):
   pass
@@ -30,7 +30,10 @@ class Node(object):
       raise TypeError
 
   def __repr__(self):
-    return '<%s>' % type(self).__name__
+    return '<%s>' % self
+
+  def __str__(self):
+    return type(self).__name__
 
 class CheckPointNode(Node):
   pass
@@ -44,14 +47,10 @@ class ExpandableNode(Node):
     self._res = res
 
 class BeforeExpandableNode(ExpandableNode):
-  def __repr__(self):
-    return '<%s>' % self
   def __str__(self):
     return 'Before %s' % self._res
 
 class AfterExpandableNode(ExpandableNode):
-  def __repr__(self):
-    return '<%s>' % self
   def __str__(self):
     return 'After %s' % self._res
 
@@ -235,10 +234,10 @@ class ResourceGraph(object):
     # nodes as their string representation. Madness, I know.
     gr2 = NX.create_empty_copy(self._graph, False)
     for node in self._graph.nodes_iter():
-      gr2.add_node(hash(node))
+      gr2.add_node(id(node))
     for (n0, n1) in self._graph.edges_iter():
-      gr2.add_edge(hash(n0), hash(n1))
-    names = dict((hash(node), { 'label': describe(node)})
+      gr2.add_edge(id(n0), id(n1))
+    names = dict((id(node), { 'label': describe(node)})
         for node in self._graph.nodes_iter())
     g = NX.to_agraph(gr2, {
         'graph': {
