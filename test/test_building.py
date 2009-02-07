@@ -40,9 +40,8 @@ ensure_resource(gc, 'AptitudePackage', name='python-networkx')
 ensure_resource(gc, 'User',
     name='zorglub', present=False, shell='/bin/true')
 
-u = resource('PgUser', name='user-pfuuit', cluster=cluster)
-if False:
-  d = ensure_resource(gc, 'PgDatabase',
+u = ensure_resource(gc, 'PgUser', name='user-pfuuit', cluster=cluster)
+d = ensure_resource(gc, 'PgDatabase',
     owner=u, name='db-pfuuit', cluster=cluster)
 
 if False:

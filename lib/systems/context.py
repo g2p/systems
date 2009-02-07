@@ -220,6 +220,8 @@ class ResourceGraph(object):
     return self.draw_agraph(fname)
 
   def draw_agraph(self, fname):
+    # XXX Conversion is lossy, because networkx / pygraphviz
+    # add nodes as their string representation. Madness, I know.
     names = dict((node, { 'label': describe(node)})
         for node in self._graph.nodes_iter())
     g = NX.to_agraph(self._graph, {
@@ -234,7 +236,8 @@ class ResourceGraph(object):
         },
         names)
     g.layout(prog='dot')
-    g.draw(fname)
+    g.draw(fname + '.svg')
+    g.write(fname + '.dot')
 
   def draw_matplotlib(self, fname):
     # Pyplot is stateful and awkward to use.
@@ -499,7 +502,7 @@ class Context(object):
     """
 
     self.ensure_frozen()
-    self.__resources.draw('frozen.svg') # XXX
+    self.__resources.draw('frozen') # XXX
     for t in self.__resources.sorted_transitions():
       t.realize()
 
