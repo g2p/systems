@@ -165,27 +165,19 @@ class ResourceGraph(object):
     If an identical resource exists, it is returned.
     """
 
-    if not isinstance(resource, Resource):
-      raise TypeError(resource, Resource)
-    res = self._add_expandable(resource, depends)
-    if res.rtype.name == 'PgUserXX':
-      logger.debug(traceback.format_stack())
-    return res
+    if not isinstance(resource, (Aggregate, CollectibleResource, Resource)):
+      raise TypeError(resource, (Aggregate, CollectibleResource, Resource))
 
-  def _add_expandable(self, expandable, depends=()):
-    if not isinstance(expandable, (Aggregate, CollectibleResource, Resource)):
-      raise TypeError(expandable, (Aggregate, CollectibleResource, Resource))
-
-    if expandable.identity in self.__expandables:
-      eig = self.__expandables[expandable.identity]
+    if resource.identity in self.__expandables:
+      eig = self.__expandables[resource.identity]
       r2 = eig._res
-      if expandable == r2:
+      if resource == r2:
         return r2
       # Avoid confusion with processed stuff or different depends.
-      raise RuntimeError(expandable, r2)
-    self.__expandables[expandable.identity] = \
-        ExpandableInGraph(self, expandable)
-    return self._add_node(expandable, depends)
+      raise RuntimeError(resource, r2)
+    self.__expandables[resource.identity] = \
+        ExpandableInGraph(self, resource)
+    return self._add_node(resource, depends)
 
   def _add_node_dep(self, node0, node1):
     if not isinstance(node0, node_types):
@@ -277,7 +269,7 @@ class ResourceGraph(object):
       if r0 in self.__processed:
         raise RuntimeError
 
-    r1 = self._add_expandable(r1)
+    r1 = self.add_resource(r1)
     r1 = self._intern(r1)
 
     for r0 in r0s:
