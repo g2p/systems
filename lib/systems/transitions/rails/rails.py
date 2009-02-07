@@ -5,7 +5,7 @@ import yaml
 
 from systems.dsl import resource, transition
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, EResource
+from systems.typesystem import AttrType, RefAttrType, ResourceType, EResource
 
 
 def is_valid_user(user):
@@ -33,9 +33,11 @@ class Rails(EResource):
         depends=(rails_gem, rake_pkg, ruby_pgsql_pkg, ssl_pkg))
 
     name = self.id_attrs['name']
-    cluster = self.wanted_attrs['cluster']
+    cluster_ref = rg.refs_received['cluster']
     run_user = self.wanted_attrs['run_user']
     run_user_name = run_user.id_attrs['name']
+    # XXX Not using maint_user for now, rails isn't designed for this.
+    maint_user = run_user
     maint_user = self.wanted_attrs['maint_user']
     maint_user_name = maint_user.id_attrs['name']
 
@@ -44,7 +46,7 @@ class Rails(EResource):
     # and normal connections, in database.yml ?
     db_user = rg.add_resource(resource('PgUser',
       name=run_user_name,
-      cluster=cluster,
+      cluster=cluster_ref,
       ))
 
     db_conf_tree = {}
@@ -59,7 +61,7 @@ class Rails(EResource):
       db = rg.add_resource(resource('PgDatabase',
         name=db_name,
         owner=db_user,
-        cluster=cluster,
+        cluster=cluster_ref,
         ))
       # Testing for db:version retcode doesn't work anymore.
       mig = rg.add_transition(transition('Command',
@@ -69,8 +71,8 @@ class Rails(EResource):
         cwd=location.id_attrs['path'],
         ),
         depends=(
-          self.passed_by_ref['run_user'],
-          self.passed_by_ref['location'],
+          rg.refs_received['run_user'],
+          rg.refs_received['location'],
           pkgs,
           db,
           ))
@@ -83,7 +85,7 @@ class Rails(EResource):
       mode='0644',
       ),
       depends=(
-        self.passed_by_ref['location'],
+        rg.refs_received['location'],
         ))
     for mig in migs:
       rg.add_dependency(db_conf_file, mig)
@@ -96,19 +98,19 @@ def register():
     id_type={
       'name': AttrType(
         pytype=str),
-      'location': AttrType(
+      'location': RefAttrType(
         rtype='Directory'),
       },
     state_type={
       # More privileged
-      'maint_user': AttrType(
+      'maint_user': RefAttrType(
         valid_condition=is_valid_user,
         rtype='User'),
       # Less privileged
-      'run_user': AttrType(
+      'run_user': RefAttrType(
         valid_condition=is_valid_user,
         rtype='User'),
-      'cluster': AttrType(
+      'cluster': RefAttrType(
         rtype='PgCluster'),
       })
   Registry.get_singleton().resource_types.register(restype)

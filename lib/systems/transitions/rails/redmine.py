@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 from systems.dsl import resource
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, EResource
+from systems.typesystem import AttrType, RefAttrType, ResourceType, EResource
 
 
 class Redmine(EResource):
@@ -13,16 +13,14 @@ class Redmine(EResource):
 
   def expand_into(self, rg):
     svn_branch = self.wanted_attrs['svn_branch']
-    cluster = self.wanted_attrs['cluster']
+    cluster_ref = rg.refs_received['cluster']
     rails_name = 'redmine-%s' % self.id_attrs['name']
     # Privileged (create tables, update checkout)
     maint_user_name = 'redmine-maint-%s' % self.id_attrs['name']
     # Less privileged (run server, write temporary files)
     run_user_name = 'redmine-run-%s' % self.id_attrs['name']
-    # XXX This is easier
-    run_user_name = maint_user_name
 
-    run_user = resource('User', name=run_user_name)
+    run_user = rg.add_resource(resource('User', name=run_user_name))
     maint_user = rg.add_resource(resource('User', name=maint_user_name))
     loc = rg.add_resource(resource('Directory',
         path=self.id_attrs['path'],
@@ -40,9 +38,9 @@ class Redmine(EResource):
         location=loc,
         maint_user=maint_user,
         run_user=run_user,
-        cluster=cluster,
+        cluster=cluster_ref,
         ))
-    rg.add_dependency(co, rails.passed_by_ref['location'])
+    rg.add_dependency(co, rg.refs_passed(rails)['location'])
 
 
 def register():
@@ -58,7 +56,7 @@ def register():
       'svn_branch': AttrType(
         default_value='http://redmine.rubyforge.org/svn/branches/0.8-stable/',
         pytype=str),
-      'cluster': AttrType(
+      'cluster': RefAttrType(
         rtype='PgCluster'),
       })
   Registry.get_singleton().resource_types.register(restype)

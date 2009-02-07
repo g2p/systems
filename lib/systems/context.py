@@ -7,7 +7,8 @@ import networkx as NX
 
 from systems.collector import Aggregate, CResource
 from systems.registry import Registry
-from systems.typesystem import EResource, Transition
+from systems.typesystem import EResource, Transition, ResourceRef
+from systems.util.datatypes import ImmutableDict
 
 __all__ = ('Context', 'global_context', )
 
@@ -24,6 +25,10 @@ class CycleError(Exception):
   pass
 
 class Node(object):
+  def __init__(self):
+    if type(self) == Node:
+      raise TypeError
+
   def __repr__(self):
     return '<%s>' % type(self).__name__
 
@@ -56,12 +61,7 @@ class GraphFirstNode(Node):
 class GraphLastNode(Node):
   pass
 
-class ExpandableByRefNode(Node):
-  def __init__(self, res):
-    super(ExpandableByRefNode, self).__init__()
-    self._res = res
-
-node_types = (Node, Transition, Aggregate, CResource, EResource)
+node_types = (Node, Transition, Aggregate, CResource, EResource, ResourceRef)
 
 class ResourceGraph(object):
   """
@@ -80,7 +80,7 @@ class ResourceGraph(object):
     # Contains CResource and EResource, despite the name.
     self.__expandables = {}
     # A multimap of references.
-    self.__corefs = {}
+    self.__received_refs = {}
     # What nodes were processed (meaning expanding or collecting)
     self.__processed = set()
     # Pre-bound args pased by ref. Allow putting extra depends on them.
@@ -164,14 +164,24 @@ class ResourceGraph(object):
       # Either it's the exact same resource, or a KeyError is thrown.
       return self._intern(resource)
     prebound = ResourceGraph()
-    for (name, arg) in resource.iter_passed_by_ref():
+    for (name, value) in resource.iter_passed_by_ref():
       # arg_refnode will be present in both graphs.
-      arg_refnode = self.make_reference(arg)
-      prebound._add_node(arg_refnode)
-      resource.pass_by_ref(name, arg_refnode)
+      arg_refnode = self._pass_by_ref(prebound, name, value)
+      # XXX This is just a fixup method
+      resource.fixup_ref_arg(name, arg_refnode)
     self.__prebound[resource.identity] = prebound
     self.__expandables[resource.identity] = resource
+    for (name, value) in resource.iter_passed_by_ref():
+      assert isinstance(value, (CResource, EResource))
     return self._add_node(resource, depends)
+
+  @property
+  def refs_received(self):
+    return ImmutableDict(self.__received_refs)
+
+  def refs_passed(self, item):
+    item = self._intern(item)
+    return self.__prebound[item.identity].refs_received
 
   def _add_node_dep(self, node0, node1):
     if not isinstance(node0, node_types):
@@ -220,11 +230,17 @@ class ResourceGraph(object):
     return self.draw_agraph(fname)
 
   def draw_agraph(self, fname):
-    # XXX Conversion is lossy, because networkx / pygraphviz
-    # add nodes as their string representation. Madness, I know.
-    names = dict((node, { 'label': describe(node)})
+    # We duplicate the graph, otherwise networkx / pygraphviz
+    # would make a lossy conversion (sometimes fails), by adding
+    # nodes as their string representation. Madness, I know.
+    gr2 = NX.create_empty_copy(self._graph, False)
+    for node in self._graph.nodes_iter():
+      gr2.add_node(hash(node))
+    for (n0, n1) in self._graph.edges_iter():
+      gr2.add_edge(hash(n0), hash(n1))
+    names = dict((hash(node), { 'label': describe(node)})
         for node in self._graph.nodes_iter())
-    g = NX.to_agraph(self._graph, {
+    g = NX.to_agraph(gr2, {
         'graph': {
           'nodesep': '0.2',
           'rankdir': 'TB',
@@ -304,15 +320,28 @@ class ResourceGraph(object):
     self._graph.delete_node(res)
     return before, after
 
-  def make_reference(self, res, depends=()):
-    if res.identity not in self.__expandables \
-        and res.identity not in self.__corefs:
-      pass
-      # XXX Can't remember why
-      #raise RuntimeError(res)
-    corefs = self.__corefs.setdefault(res.identity, list())
-    ref = self._add_node(ExpandableByRefNode(res), depends)
-    corefs.append(ref)
+  def _receive_by_ref(self, name, value):
+    if name in self.__received_refs:
+      raise RuntimeError(name, value)
+    ref = self._add_node(ResourceRef(value))
+    self.__received_refs[name] = ref
+    return ref
+
+  def _pass_by_ref(self, subgraph, name, origin):
+    # The origin/value distinction is important
+    # for aliased arguments (two refs, same val).
+    origin = self._intern(origin)
+    if isinstance(origin, (CResource, EResource)):
+      value = origin
+    elif isinstance(origin, ResourceRef):
+      # Handle passing received values again.
+      value = origin.unref
+    else:
+      raise TypeError(origin)
+
+    ref = subgraph._receive_by_ref(name, value)
+    self._add_node(ref)
+    self._add_node_dep(origin, ref)
     return ref
 
   def expand_resource(self, res):

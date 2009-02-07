@@ -5,7 +5,7 @@ import re
 
 from systems.dsl import resource
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, EResource
+from systems.typesystem import AttrType, RefAttrType, ResourceType, EResource
 from systems.util.templates import build_and_render
 
 __all__ = ('register', )
@@ -42,8 +42,8 @@ class PgDatabase(EResource):
         raise ValueError
       if not cluster.wanted_attrs['present']:
         raise ValueError
-      rg.add_dependency(self.passed_by_ref['owner'], tr)
-      rg.add_dependency(self.passed_by_ref['cluster'], tr)
+      rg.add_dependency(rg.refs_received['owner'], tr)
+      rg.add_dependency(rg.refs_received['cluster'], tr)
 
     enable_backups = p1 and self.wanted_attrs['enable_backups']
     rg.add_resource(self.cron_backup_res(enable_backups))
@@ -99,7 +99,7 @@ exec /usr/bin/pg_dump -Fc \\
 def register():
   restype = ResourceType('PgDatabase', PgDatabase,
       id_type={
-        'cluster': AttrType(
+        'cluster': RefAttrType(
           rtype='PgCluster'),
         'name': AttrType(
           valid_condition=is_valid_dbname,
@@ -110,7 +110,7 @@ def register():
           default_value=True,
           pytype=bool,
           reader=read_present),
-        'owner': AttrType(
+        'owner': RefAttrType(
           rtype='PgUser'),
         'enable_backups': AttrType(
           default_value=True,

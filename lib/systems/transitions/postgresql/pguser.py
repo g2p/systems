@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, EResource
+from systems.typesystem import AttrType, RefAttrType, ResourceType, EResource
 
 __all__ = ('register', )
 
@@ -43,12 +43,12 @@ class PgUser(EResource):
       cluster = self.id_attrs['cluster']
       if not cluster.wanted_attrs['present']:
         raise ValueError
-      rg.add_dependency(self.passed_by_ref['cluster'], tr)
+      rg.add_dependency(rg.refs_received['cluster'], tr)
 
 def register():
   restype = ResourceType('PgUser', PgUser,
       id_type={
-        'cluster': AttrType(
+        'cluster': RefAttrType(
           rtype='PgCluster'),
         'name': AttrType(
           pytype=str),

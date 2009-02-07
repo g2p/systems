@@ -29,7 +29,6 @@ class AttrType(object):
     valid_condition: a check for valid values
     pytype: a python type values must have
     reader: reads the value from current system state
-    rtype: a resource type.
 
     If none_allowed is True, None values are allowed, they bypass validation,
     and they will be the default. default_value cannot be set in this case.
@@ -47,7 +46,6 @@ class AttrType(object):
     self.__default_value = default_value
     self.__valid_condition = valid_condition
     self.__pytype = pytype
-    self.__rtype = rtype
     self.__reader = reader
     if default_value is not None:
       self.require_valid_value(default_value)
@@ -83,37 +81,23 @@ class AttrType(object):
   def reader(self):
     return self.__reader
 
-  @property
-  def rtype(self):
-    """
-    A resource type.
-    """
-
-    return self.__rtype
-
   def require_valid_value(self, val):
     """
     Check the value is valid, raise if it isn't.
 
     Checks for None (if allowed, None bypasses validation).
 
-    Then check pytype, rtype and validation functions.
+    Then check pytype and validation functions.
     """
 
-    if self.__none_allowed and val is None:
-      return
+    if val is None:
+      if self.none_allowed:
+        return
+      raise ValueError(val)
 
     if self.__pytype is not None:
       if not isinstance(val, self.__pytype):
         raise TypeError(val, self.__pytype)
-
-    if self.__rtype is not None:
-      from systems.registry import Registry
-      rtype = Registry.get_singleton().resource_types.lookup(self.__rtype)
-      if not isinstance(val, ResourceBase):
-        raise TypeError(val, ResourceBase)
-      if val.rtype != rtype:
-        raise TypeError(val.rtype, rtype)
 
     if self.__valid_condition is not None:
       if not self.__valid_condition(val):
@@ -127,6 +111,40 @@ class AttrType(object):
     v = self.__reader(id_attrs)
     self.require_valid_value(v)
     return v
+
+
+class RefAttrType(AttrType):
+  # XXX Propose soft semantics as well.
+  def __init__(self, **kargs):
+    """
+    rtype: a resource type.
+    """
+
+    self.__rtypename = kargs.pop('rtype')
+    if not isinstance(self.rtypename, str):
+      raise ValueError(self.rtypename)
+    if 'pytype' in kargs:
+      raise ValueError(kargs)
+    kargs['pytype'] = (ResourceBase, ResourceRef)
+    super(RefAttrType, self).__init__(**kargs)
+
+  @property
+  def rtypename(self):
+    return self.__rtypename
+
+  def _rtype(self):
+    from systems.registry import Registry
+    return Registry.get_singleton().resource_types.lookup(self.rtypename)
+
+  def require_valid_value(self, val):
+    super(RefAttrType, self).require_valid_value(val)
+    if val is None:
+      return
+    if isinstance(val, ResourceRef):
+      val = val.unref
+    rtype = self._rtype()
+    if val.rtype != rtype:
+      raise TypeError(val.rtype, rtype)
 
 
 class SimpleType(object):
@@ -313,17 +331,9 @@ class Attrs(ImmutableDict):
       if self[name] != attr.default_value:
         yield (name, self[name])
 
-  def soft_check_refs(self):
-    for (name, attr) in self.__stype.atypes.iteritems():
-      if attr.rtype is not None:
-        ref = self[name]
-        ref.soft_check()
-
   def iter_passed_by_ref(self):
-    # XXX Subclass AttrType and write RefAttrType.
-    # Propose soft and hard semantics.
     for (name, attr) in self.__stype.atypes.iteritems():
-      if attr.rtype is not None:
+      if isinstance(attr, RefAttrType):
         yield name, self[name]
 
   @property
@@ -390,7 +400,6 @@ class ResourceBase(ContractSupportBase):
     self.__wanted_attrs = Attrs(rtype.state_type, wanted_valdict)
     self.__read_attrs = ReadAttrs(
         self.id_attrs, self.rtype.state_type, self.rtype.global_reader)
-    self.__passed_by_ref = {}
 
   @property
   def id_attrs(self):
@@ -432,12 +441,22 @@ class ResourceBase(ContractSupportBase):
 
     return self.__read_attrs
 
-  @property
-  def passed_by_ref(self):
-    return ImmutableDict(self.__passed_by_ref)
-
-  def pass_by_ref(self, name, value):
-    self.__passed_by_ref[name] = value
+  def fixup_ref_arg(self, name, ref):
+    # XXX some deep interaction at work here
+    # Would be nice to do this at __init__ time.
+    if name in self.rtype.id_type.atypes:
+      dct = dict(self.id_attrs)
+      dct[name] = ref.unref
+      self.__id_attrs = Attrs(self.rtype.id_type, dct)
+      self.__read_attrs = ReadAttrs(
+          self.id_attrs, self.rtype.state_type, self.rtype.global_reader)
+    elif name in self.rtype.state_type.atypes:
+      dct = dict(self.wanted_attrs)
+      dct[name] = ref.unref
+      self.__wanted_attrs = Attrs(self.rtype.state_type, dct)
+    else:
+      raise ValueError(name, ref)
+    LOGGER.debug('Fixup of %r[%r] to %r', self, name, ref.unref)
 
   def iter_passed_by_ref(self):
     for item in self.id_attrs.iter_passed_by_ref():
@@ -450,9 +469,22 @@ class EResource(ResourceBase, Expandable):
   pass
 
 
-class UnresolvedReferenceError(RuntimeError):
-  pass
+class ResourceRef(object):
+  """
+  This is somewhat similar to C++ references.
 
+  You have the adress, and you are also sure there is something behind.
+  """
+
+  def __init__(self, target):
+    self.__target = target
+
+  @property
+  def unref(self):
+    return self.__target
+
+  def __repr__(self):
+    return 'ResourceRef(%r)' % self.unref
 
 class Transition(object):
   # Subclassing to implement abstract stuff.

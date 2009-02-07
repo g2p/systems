@@ -29,7 +29,8 @@ class PythonCode(Transition):
             pytype=dict),
           },
         results_type={
-          'retval': AttrType(),
+          'retval': AttrType(
+            none_allowed=True),
           })
     Registry.get_singleton().transition_types.register(cls.__type)
 

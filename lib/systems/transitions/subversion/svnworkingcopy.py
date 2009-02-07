@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 from systems.dsl import resource, transition
 from systems.registry import Registry
-from systems.typesystem import AttrType, ResourceType, EResource
+from systems.typesystem import AttrType, RefAttrType, ResourceType, EResource
 
 
 class SvnWorkingCopy(EResource):
@@ -39,14 +39,14 @@ class SvnWorkingCopy(EResource):
     rg.add_transition(co)
     rg.add_transition(up)
     rg.add_dependency(pkg, co)
-    rg.add_dependency(self.passed_by_ref['location'], co)
+    rg.add_dependency(rg.refs_received['location'], co)
     rg.add_dependency(co, up)
 
 
 def register():
   restype = ResourceType('SvnWorkingCopy', SvnWorkingCopy,
     id_type={
-      'location': AttrType(
+      'location': RefAttrType(
         rtype='Directory'),
       },
     state_type={
