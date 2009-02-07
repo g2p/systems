@@ -367,6 +367,10 @@ class Expandable(object):
   Subclass Identifiable due to ResourceGraph requirements.
   """
 
+  def before_expand(self, resource_graph):
+    logger.debug('Before expand: %s', self)
+
+  @precondition(before_expand)
   def expand_into(self, resource_graph):
     """
     Place transitions and resources that realize the expandable.
@@ -442,12 +446,7 @@ class ResourceBase(ContractSupportBase):
 
 
 class EResource(ResourceBase, Expandable):
-  def before_expand(self, resource_graph):
-    logger.debug('Before expand: %s', self)
-
-  @precondition(before_expand)
-  def expand_into(self, resource_graph):
-    raise NotImplementedError
+  pass
 
 
 class UnresolvedReferenceError(RuntimeError):

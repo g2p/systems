@@ -51,6 +51,13 @@ class MultipleInheritancePathsError(Exception):
 
   pass
 
+def attrs_by_mro(cls):
+  attrs = {}
+  for base in cls.mro():
+    for (name, attr) in vars(base).iteritems():
+      if name not in attrs:
+        attrs[name] = attr
+  return attrs
 
 class ContractSupportMcls(type):
   """
@@ -66,7 +73,8 @@ class ContractSupportMcls(type):
   def __new__(mcls, name, bases, dct):
     attrnames = set()
     for base in bases:
-      for attrname in vars(base):
+      # vars doesn't go into inherited methods.
+      for attrname in attrs_by_mro(base):
         base_attr = getattr(base, attrname)
         if isinstance(base_attr, types.MethodType):
           base_func = base_attr.im_func
