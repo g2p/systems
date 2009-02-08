@@ -116,7 +116,9 @@ class AptitudePackageCollector(Collector):
     get_registry().collectors \
         .register(cls('AptitudePackageCollector'))
 
+
 def register():
   AptitudePackage.register()
   AptitudePackageCollector.register()
+
 

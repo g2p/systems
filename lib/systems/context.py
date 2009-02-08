@@ -71,7 +71,7 @@ class ResourceGraph(object):
   Invariant: directed, acyclic.
   """
 
-  def __init__(self):
+  def __init__(self, top=None):
     self._graph = NX.DiGraph()
     self._first = GraphFirstNode()
     self._last = GraphLastNode()
@@ -85,6 +85,12 @@ class ResourceGraph(object):
     self.__processed = set()
     # Pre-bound args pased by ref. Allow putting extra depends on them.
     self.__prebound = {}
+    if top is not None:
+      if not isinstance(top, ResourceGraph):
+        raise TypeError(top, ResourceGraph)
+      self.__top = top
+    else:
+      self.__top = self
 
   def sorted_transitions(self):
     return [n for n in NX.topological_sort(self._graph)
@@ -163,7 +169,7 @@ class ResourceGraph(object):
       # We have this id already.
       # Either it's the exact same resource, or a KeyError is thrown.
       return self._intern(resource)
-    prebound = ResourceGraph()
+    prebound = ResourceGraph(self.__top)
     for (name, ref) in resource.iter_passed_by_ref():
       # arg_refnode will be present in both graphs.
       self._pass_by_ref(prebound, name, ref)
@@ -178,6 +184,18 @@ class ResourceGraph(object):
     depends = list(depends)
     depends.append(res)
     return self._add_node(ResourceRef(res), depends)
+
+  def add_to_top(self, res):
+    """
+    Add a resource to the top ResourceGraph.
+
+    Use it to put things that you don't necessarily
+    want to be after the outside dependencies the current graph has.
+    """
+
+    res = self.__top.add_resource(res)
+    ref = self.__top.make_ref(res)
+    return self._add_node(ref)
 
   def _refs_received(self):
     return ImmutableDict(self.__received_refs)
@@ -361,7 +379,7 @@ class ResourceGraph(object):
     if isinstance(res, EResource):
       resource_graph = self.__prebound[res.identity]
     elif isinstance(res, Aggregate):
-      resource_graph = ResourceGraph()
+      resource_graph = ResourceGraph(self.__top)
     else:
       raise TypeError
     res.expand_into(resource_graph)

@@ -59,3 +59,4 @@ class Aggregate(Expandable):
     # Caveat: Only add transitions, not resources.
     raise NotImplementedError
 
+

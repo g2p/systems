@@ -21,7 +21,7 @@ class SvnWorkingCopy(EResource):
     if not loc_ref.unref.wanted_attrs['present']:
       raise ValueError
 
-    pkg = rg.add_resource(resource('AptitudePackage', name='subversion'))
+    pkg_ref = rg.add_to_top(resource('AptitudePackage', name='subversion'))
 
     repo_url = self.wanted_attrs['url']
     path = loc_ref.unref.id_attrs['path']
@@ -38,7 +38,7 @@ class SvnWorkingCopy(EResource):
 
     rg.add_transition(co)
     rg.add_transition(up)
-    rg.add_dependency(pkg, co)
+    rg.add_dependency(pkg_ref, co)
     rg.add_dependency(loc_ref, co)
     rg.add_dependency(co, up)
 

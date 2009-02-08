@@ -447,6 +447,7 @@ class ResourceBase(ContractSupportBase):
       yield item
 
   def ref(self, resource_graph):
+    # XXX make_ref may be enough.
     return resource_graph.make_ref(self)
 
 
@@ -484,6 +485,7 @@ class ResourceRef(object):
 
   def __repr__(self):
     return 'ResourceRef(%r)' % self.unref
+
 
 class Transition(object):
   # Subclassing to implement abstract stuff.

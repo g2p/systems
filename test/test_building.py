@@ -47,13 +47,13 @@ def run_tests(rg):
   d = rg.add_resource(resource('PgDatabase',
       owner=u.ref(rg), name='db-pfuuit', cluster=cluster.ref(rg)))
 
-  if False:
-    rg.add_resource(resource('SvnWorkingCopy',
-      location=resource('Directory',
+  dj_dir = rg.add_resource(resource('Directory',
         path='/tmp/django-queue-service',
         mode='0755',
         owner='nobody',
-        group='nogroup'),
+        group='nogroup'))
+  rg.add_resource(resource('SvnWorkingCopy',
+      location=dj_dir.ref(rg),
       url='http://django-queue-service.googlecode.com/svn/trunk/'))
 
   def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
