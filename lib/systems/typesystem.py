@@ -440,23 +440,6 @@ class ResourceBase(ContractSupportBase):
 
     return self.__read_attrs
 
-  def fixup_ref_arg(self, name, ref):
-    # XXX some deep interaction at work here
-    # Would be nice to do this at __init__ time.
-    if name in self.rtype.id_type.atypes:
-      dct = dict(self.id_attrs)
-      dct[name] = ref.unref
-      self.__id_attrs = Attrs(self.rtype.id_type, dct)
-      self.__read_attrs = ReadAttrs(
-          self.id_attrs, self.rtype.state_type, self.rtype.global_reader)
-    elif name in self.rtype.state_type.atypes:
-      dct = dict(self.wanted_attrs)
-      dct[name] = ref.unref
-      self.__wanted_attrs = Attrs(self.rtype.state_type, dct)
-    else:
-      raise ValueError(name, ref)
-    LOGGER.debug('Fixup of %r[%r] to %r', self, name, ref.unref)
-
   def iter_passed_by_ref(self):
     for item in self.id_attrs.iter_passed_by_ref():
       yield item
