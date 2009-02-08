@@ -88,11 +88,11 @@ setup(name='Systems',
       long_description='Systems allows you to write a declarative description\n'
         +'of the resources that make up a system,\n'
         +'and enforce this description.\n',
-      requires=['networkx', 'jinja2', 'epydoc', ],
+      requires=['networkx', 'jinja2', 'epydoc', 'yaml', 'pygraphviz', ],
       packages=[
            'systems',
            'systems.transitions',
-           'systems.transitions.file',
+           'systems.transitions.files',
            'systems.transitions.packages',
            'systems.transitions.postgresql',
            'systems.transitions.rails',

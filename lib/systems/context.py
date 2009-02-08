@@ -231,6 +231,9 @@ class ResourceGraph(object):
     return self.draw_agraph(fname)
 
   def draw_agraph(self, fname):
+    # XXX pygraphviz has steep dependencies (x11 libs)
+    # and recommends (texlive) for a headless box.
+
     # We duplicate the graph, otherwise networkx / pygraphviz
     # would make a lossy conversion (sometimes refusing to convert), by adding
     # nodes as their string representation. Madness, I know.
