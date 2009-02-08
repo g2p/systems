@@ -516,14 +516,4 @@ class Realizer(object):
       t.realize()
     self.__state = 'realized'
 
-  @classmethod
-  def global_instance(cls):
-    """
-    Get the "singleton" instance.
-    """
-
-    if not hasattr(cls, '_global_instance'):
-      setattr(cls, '_global_instance', cls())
-    return getattr(cls, '_global_instance')
-
 
