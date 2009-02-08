@@ -175,6 +175,8 @@ class ResourceGraph(object):
     res = self._intern(res)
     if not isinstance(res, (CResource, EResource)):
       raise TypeError(res, (CResource, EResource))
+    depends = list(depends)
+    depends.append(res)
     return self._add_node(ResourceRef(res), depends)
 
   def _refs_received(self):
