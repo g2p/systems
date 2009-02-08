@@ -281,6 +281,7 @@ class ResourceGraph(object):
     # Dot is good for DAGs.
     g.layout(prog='dot')
     g.draw(fname + '.svg')
+    NX.write_yaml(self._graph, fname + '.yaml')
 
   def draw_matplotlib(self, fname):
     # Pyplot is stateful and awkward to use.
@@ -449,14 +450,14 @@ class Realizer(object):
     # Order is important
     self.require_state('init')
     self.__expandable.expand_into(self.__resources)
-    self.__resources.draw('freezing')
+    self.__resources.draw('/tmp/freezing')
     self._expand()
-    self.__resources.draw('pre-collect')
+    self.__resources.draw('/tmp/pre-collect')
     self._collect()
     self._expand_aggregates()
     assert not bool(list(self.__resources.iter_unprocessed()))
     self.__state = 'frozen'
-    self.__resources.draw('frozen')
+    self.__resources.draw('/tmp/frozen')
 
   def _collect(self):
     # Collects compatible nodes into merged nodes.
