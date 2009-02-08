@@ -297,10 +297,8 @@ class ResourceGraph(object):
   def _move_edges(self, n0, n1):
     if n0 == n1:
       raise RuntimeError
-    if n0 not in self._graph:
-      raise KeyError
-    if n1 not in self._graph:
-      raise KeyError
+    n0 = self._intern(n0)
+    n1 = self._intern(n1)
     self.require_acyclic()
     # list is used as a temporary
     # add after delete in case of same.
@@ -315,6 +313,7 @@ class ResourceGraph(object):
     self.require_acyclic()
 
   def _split_node(self, res):
+    res = self._intern(res)
     before = self._add_node(BeforeExpandableNode(res))
     after = self._add_node(AfterExpandableNode(res))
     self._graph.add_edge(before, after)
@@ -427,11 +426,12 @@ class Realizer(object):
 
     if self.__state == 'frozen':
       return
+    # Order is important
     self.require_state('init')
     self.__expandable.expand_into(self.__resources)
     self.__resources.draw('freezing')
-    # Order is important
     self._expand()
+    self.__resources.draw('pre-collect')
     self._collect()
     self._expand_aggregates()
     assert not bool(list(self.__resources.iter_unprocessed()))
