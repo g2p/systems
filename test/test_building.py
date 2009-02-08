@@ -4,17 +4,17 @@ from __future__ import with_statement
 
 import sys
 import logging
-import runpy
 
 # Set up a default handler that writes to stderr.
 logging.basicConfig(level=logging.DEBUG)
 
 from systems.context import Realizer
 from systems.dsl import resource, transition
+from systems.pluginmanager import load_plugin
 from systems.typesystem import FunExpandable
 from systems.util.templates import build_and_render
 
-runpy.run_module('systems.transitions.__init__')['register']()
+load_plugin('systems.plugins')
 
 def run_tests(rg):
   cluster = rg.add_resource(resource('PgCluster'))
