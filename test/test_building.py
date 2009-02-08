@@ -5,6 +5,10 @@ from __future__ import with_statement
 import sys
 import logging
 
+import yaml
+
+LOGGER = logging.getLogger(__name__)
+
 # Set up a default handler that writes to stderr.
 logging.basicConfig(level=logging.DEBUG)
 
@@ -52,9 +56,10 @@ def run_tests(rg):
         mode='0755',
         owner='nobody',
         group='nogroup'))
-  rg.add_resource(resource('SvnWorkingCopy',
+  svn_wc = rg.add_resource(resource('SvnWorkingCopy',
       location=dj_dir.ref(rg),
       url='http://django-queue-service.googlecode.com/svn/trunk/'))
+  LOGGER.debug(yaml.dump(svn_wc))
 
   def test_gitosis(pub_file, user_name='git', user_home='/var/git'):
     with open(pub_file) as f:
@@ -76,7 +81,8 @@ def run_tests(rg):
       depends=(pkg, usr),
       )
 
-  #test_gitosis('g2p-moulinex.pub')
+  test_gitosis('g2p-moulinex.pub')
+
 
 Realizer(FunExpandable(run_tests)).realize()
 

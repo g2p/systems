@@ -3,6 +3,8 @@ from __future__ import absolute_import
 
 from logging import getLogger
 
+import yaml
+
 from systems.util.contracts import ContractSupportBase, precondition
 from systems.util.datatypes import ImmutableDict, Named
 
@@ -394,6 +396,8 @@ class Expandable(object):
 
 
 class ResourceBase(ContractSupportBase):
+  # yaml.YAMLObject isn't a useful base for us, we need a _multi_ representer.
+
   # Make subclasses that implement the abstract stuff.
   def __init__(self, rtype, id_valdict, wanted_valdict):
     super(ResourceBase, self).__init__()
@@ -454,6 +458,32 @@ class ResourceBase(ContractSupportBase):
   def ref(self, resource_graph):
     # XXX make_ref may be enough.
     return resource_graph.make_ref(self)
+
+  yaml_tag_prefix = u'!Resource:'
+
+  @classmethod
+  def from_yaml(cls, loader, tag_suffix, node):
+    from systems.registry import get_registry
+    mp = loader.construct_mapping(node)
+    rtype = get_registry().resource_types.lookup(tag_suffix)
+    return cls(rtype, id_valdict=mp['id'], wanted_valdict=mp['wanted'])
+
+  @classmethod
+  def to_yaml(cls, dumper, data):
+    tag = cls.yaml_tag_prefix + data.rtype.name
+    id_valdict = dict(data.id_attrs.iter_nondefault_attrs())
+    wanted_valdict = dict(data.wanted_attrs.iter_nondefault_attrs())
+    node = dumper.represent_mapping(tag, {
+      'id': id_valdict,
+      'wanted': wanted_valdict,
+      })
+    return node
+
+  @classmethod
+  def register_yaml(cls):
+    yaml.add_multi_representer(cls, cls.to_yaml)
+    yaml.add_multi_constructor(cls.yaml_tag_prefix, cls.from_yaml)
+ResourceBase.register_yaml()
 
 
 class FunExpandable(Expandable):
