@@ -10,7 +10,7 @@ from systems.registry import get_registry
 from systems.typesystem import EResource, Transition, ResourceRef
 from systems.util.datatypes import ImmutableDict
 
-__all__ = ('Context', 'global_context', )
+__all__ = ('Realizer', )
 
 
 LOGGER = getLogger(__name__)
@@ -77,8 +77,9 @@ class ResourceGraph(object):
     self._last = GraphLastNode()
     self._graph.add_edge(self._first, self._last)
     # Contains CResource and EResource, despite the name.
+    # Used to enforce max one resource per id.
     self.__expandables = {}
-    # A multimap of references.
+    # Received references, by name.
     self.__received_refs = {}
     # What nodes were processed (meaning expanding or collecting)
     self.__processed = set()
@@ -375,6 +376,7 @@ class ResourceGraph(object):
       self.__prebound[id1] = rg1
 
     for (id1, res1) in resource_graph.__expandables.iteritems():
+      # We expand from the outside in.
       assert res1 not in self.__processed
       if id1 in self.__expandables:
         # Pass by reference if you must use the same resource
@@ -395,13 +397,14 @@ class ResourceGraph(object):
     self.require_acyclic()
 
 
-class Context(object):
+class Realizer(object):
   """
   A graph of realizables linked by dependencies.
   """
 
-  def __init__(self):
+  def __init__(self, expandable):
     self.__resources = ResourceGraph()
+    self.__expandable = expandable
     self.__state = 'init'
 
   def require_state(self, state):
@@ -410,34 +413,7 @@ class Context(object):
     """
 
     if self.__state != state:
-      raise RuntimeError(u'Context state should be «%s»' % state)
-
-  def ensure_resource(self, r, depends):
-    """
-    Add a resource to be realized.
-
-    If an identical resource exists, it is returned.
-    """
-
-    self.require_state('init')
-
-    return self.__resources.add_resource(r, depends)
-
-  def ensure_transition(self, t, depends):
-    self.require_state('init')
-
-    return self.__resources.add_transition(t, depends)
-
-  def ensure_ref(self, r, depends):
-    self.require_state('init')
-
-    return self.__resources.make_ref(r, depends)
-
-  @property
-  def resource_graph(self):
-    self.require_state('init')
-
-    return self.__resources
+      raise RuntimeError(u'Realizer state should be «%s»' % state)
 
   def ensure_frozen(self):
     """
@@ -449,6 +425,7 @@ class Context(object):
     if self.__state == 'frozen':
       return
     self.require_state('init')
+    self.__expandable.expand_into(self.__resources)
     self.__resources.draw('freezing')
     # Order is important
     self._expand()
@@ -460,7 +437,6 @@ class Context(object):
 
   def _collect(self):
     # Collects compatible nodes into merged nodes.
-    self.require_state('init')
 
     def can_merge(part0, part1):
       for n0 in part0:
@@ -538,6 +514,7 @@ class Context(object):
     self.ensure_frozen()
     for t in self.__resources.sorted_transitions():
       t.realize()
+    self.__state = 'realized'
 
   @classmethod
   def global_instance(cls):
@@ -549,11 +526,4 @@ class Context(object):
       setattr(cls, '_global_instance', cls())
     return getattr(cls, '_global_instance')
 
-
-def global_context():
-  """
-  The global instance.
-  """
-
-  return Context.global_instance()
 

@@ -1,5 +1,6 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 from __future__ import absolute_import
+from __future__ import with_statement
 
 import subprocess
 
@@ -15,13 +16,14 @@ def is_valid_arg(st):
 def read_present(id_attrs):
   # Chicken and egg problem:
   # this won't work until we have installed rubygems.
-  r = subprocess.call(['/usr/bin/gem',
-    'query',
-    '--quiet',
-    '--installed',
-    '--name-matches', id_attrs['name'],
-    '--version', id_attrs['version'],
-    ])
+  with open('/dev/null') as nullf:
+    r = subprocess.call(['/usr/bin/gem',
+      'query',
+      '--quiet',
+      '--installed',
+      '--name-matches', id_attrs['name'],
+      '--version', id_attrs['version'],
+      ], stdout=nullf)
   if r == 0:
     return True
   elif r == 1:

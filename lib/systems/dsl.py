@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 from systems.registry import get_registry
+from systems.typesystem import Expandable
 
 
 def resource_type(typename):
@@ -15,23 +16,8 @@ def resource(typename, **valdict):
   i = t.make_instance(valdict)
   return i
 
-def resource_ref(typename, **valdict):
-  t = resource_type(typename)
-  i = t.make_ref(valdict)
-  return i
-
 def transition(typename, **instructions_valdict):
   t = transition_type(typename)
   i = t.make_instance(instructions_valdict)
   return i
-
-def ensure_resource(context, typename, depends=(), **valdict):
-  r = resource(typename, **valdict)
-  r = context.ensure_resource(r, depends)
-  return r
-
-def ensure_transition(context, typename, depends=(), **valdict):
-  t = transition(typename, **valdict)
-  t = context.ensure_transition(t, depends)
-  return t
 

@@ -450,6 +450,18 @@ class ResourceBase(ContractSupportBase):
     return resource_graph.make_ref(self)
 
 
+class FunExpandable(Expandable):
+  """
+  Convenience class that builds an Expandable from a function.
+  """
+
+  def __init__(self, fun):
+    self.__fun = fun
+
+  def expand_into(self, rg):
+    return self.__fun(rg)
+
+
 class EResource(ResourceBase, Expandable):
   pass
 
