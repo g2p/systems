@@ -6,6 +6,7 @@ import yaml
 from systems.dsl import resource, transition
 from systems.registry import get_registry
 from systems.typesystem import AttrType, RefAttrType, ResourceType, EResource
+from systems.util.templates import build_and_render
 
 
 def is_valid_user(user):
@@ -52,8 +53,19 @@ class Rails(EResource):
       cluster=cluster_ref,
       ))
 
+    sv_dir_loc = rg.add_resource(resource('Directory',
+        path=loc_path+'/service',
+        mode='0755',
+        ),
+      depends=(loc_ref, ))
+    sv_dir = rg.add_resource(resource('SvDir',
+        location=sv_dir_loc.ref(rg),
+        ))
+
     db_conf_tree = {}
     migs = []
+    # XXX Leads to conflicts
+    env_ports = {'production': 4334, 'test': 5434, 'development': 6534, }
     for env in ('production', 'test', 'development', ):
       db_name = 'rails-%s-%s' % (name, env, )
       db_conf_tree[env] = {
@@ -80,6 +92,27 @@ class Rails(EResource):
           db,
           ))
       migs.append(mig)
+      sv_loc_path = loc_path + '/service/' + env
+      sv_loc = rg.add_resource(resource('Directory',
+          path=sv_loc_path,
+          mode='0755',
+          ),
+        depends=(sv_dir_loc, ))
+      sv_contents = build_and_render('''#!/bin/sh
+cd ../..
+# Rails messages and backtraces are normally on stderr.
+exec 2>&1
+exec chpst -u {{ maint_user_name }} ./script/server webrick --environment {{ env }} --binding {{ binding_ip }} --port {{ port }}
+''',
+        maint_user_name=maint_user_name,
+        env=env,
+        binding_ip='127.0.0.1',
+        port=env_ports[env],
+        ).encode('utf8')
+      sv = rg.add_resource(resource('Service',
+          location=sv_loc.ref(rg),
+          contents=sv_contents,
+          ))
     tmp_dirs = rg.add_transition(transition('Command',
       cmdline=['/usr/bin/rake', 'tmp:create'],
       username=maint_user_name,

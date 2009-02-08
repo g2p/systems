@@ -272,6 +272,11 @@ class ResourceType(Named):
     id_valdict, wanted_valdict = self._separate_valdict(valdict)
     return self.__instance_class(self, id_valdict, wanted_valdict)
 
+  def make_read_instance(self, id_valdict):
+    # Some resources (generally that don't have the 'present' attr)
+    # won't support that.
+    pass # XXX
+
 
 def require_disjoint(d1, d2):
   s1 = set(d1.keys())
