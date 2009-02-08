@@ -13,7 +13,7 @@ def read_present(id_attrs):
   return cluster.check_existence('pg_roles', 'rolname', name)
 
 def create_user_trans(id_attrs):
-  cluster = id_attrs['cluster']
+  cluster = id_attrs['cluster'].unref
   name = id_attrs['name']
   return cluster.command_trans(
       cmdline=['/usr/bin/createuser', '-e',
@@ -22,7 +22,7 @@ def create_user_trans(id_attrs):
         ], )
 
 def drop_user_trans(id_attrs):
-  cluster = id_attrs['cluster']
+  cluster = id_attrs['cluster'].unref
   name = id_attrs['name']
   return cluster.command_trans(
       cmdline=['/usr/bin/dropuser', '-e',
