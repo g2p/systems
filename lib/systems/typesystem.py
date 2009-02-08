@@ -557,4 +557,28 @@ class Transition(object):
     l.extend(', %s=%r' % e for e in self.instr_attrs.iter_nondefault_attrs())
     return 'transition(%r%s)' % (self.__ttype.name, ''.join(l))
 
+  yaml_tag_prefix = u'!Transition:'
+
+  @classmethod
+  def from_yaml(cls, loader, tag_suffix, node):
+    from systems.registry import get_registry
+    mp = loader.construct_mapping(node)
+    ttype = get_registry().transition_types.lookup(tag_suffix)
+    return cls(ttype, id_valdict=mp['instr'])
+
+  @classmethod
+  def to_yaml(cls, dumper, data):
+    tag = cls.yaml_tag_prefix + data.__ttype.name
+    instr_valdict = dict(data.instr_attrs.iter_nondefault_attrs())
+    node = dumper.represent_mapping(tag, {
+      'instr': instr_valdict,
+      })
+    return node
+
+  @classmethod
+  def register_yaml(cls):
+    yaml.add_multi_representer(cls, cls.to_yaml)
+    yaml.add_multi_constructor(cls.yaml_tag_prefix, cls.from_yaml)
+Transition.register_yaml()
+
 

@@ -32,10 +32,12 @@ def run_tests(rg):
       depends=[rails_sites],
       )
 
-  rg.add_transition(transition('Command',
-      cmdline=['/bin/echo', 'Chatty command is chatty']))
+  # Lambdas won't do well in YAML
   rg.add_transition(transition('PythonCode',
       function=lambda: sys.stderr.write('Fariboles!\n')))
+  cmd_tr = rg.add_transition(transition('Command',
+      cmdline=['/bin/echo', 'Chatty command is chatty']))
+  LOGGER.debug(yaml.dump(cmd_tr))
 
   text = build_and_render('Hello {{ name }}!\n', name='Jane Doe')
 
