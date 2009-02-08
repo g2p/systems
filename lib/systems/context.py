@@ -230,7 +230,7 @@ class ResourceGraph(object):
 
   def draw_agraph(self, fname):
     # We duplicate the graph, otherwise networkx / pygraphviz
-    # would make a lossy conversion (sometimes fails), by adding
+    # would make a lossy conversion (sometimes refusing to convert), by adding
     # nodes as their string representation. Madness, I know.
     gr2 = NX.create_empty_copy(self._graph, False)
     for node in self._graph.nodes_iter():
@@ -239,6 +239,8 @@ class ResourceGraph(object):
       gr2.add_edge(id(n0), id(n1))
     names = dict((id(node), { 'label': describe(node)})
         for node in self._graph.nodes_iter())
+    gr2.delete_node(id(self._first))
+    gr2.delete_node(id(self._last))
     g = NX.to_agraph(gr2, {
         'graph': {
           'nodesep': '0.2',
@@ -251,6 +253,7 @@ class ResourceGraph(object):
         },
         names)
     g.write(fname + '.dot')
+    # Dot is good for DAGs.
     g.layout(prog='dot')
     g.draw(fname + '.svg')
 
@@ -416,7 +419,7 @@ class Context(object):
     if self.__state != state:
       raise RuntimeError(u'Context state should be «%s»' % state)
 
-  def ensure_resource(self, r):
+  def ensure_resource(self, r, depends):
     """
     Add a resource to be realized.
 
@@ -425,15 +428,12 @@ class Context(object):
 
     self.require_state('init')
 
-    return self.__resources.add_resource(r)
+    return self.__resources.add_resource(r, depends)
 
-  def ensure_transition(self, t):
+  def ensure_transition(self, t, depends):
     self.require_state('init')
 
-    return self.__resources.add_transition(t)
-
-  def ensure_dependency(self, r0, r1):
-    return self.__resources.add_dependency(r0, r1)
+    return self.__resources.add_transition(t, depends)
 
   def ensure_frozen(self):
     """
@@ -445,12 +445,14 @@ class Context(object):
     if self.__state == 'frozen':
       return
     self.require_state('init')
+    self.__resources.draw('freezing')
     # Order is important
     self._expand()
     self._collect()
     self._expand_aggregates()
     assert not bool(list(self.__resources.iter_unprocessed()))
     self.__state = 'frozen'
+    self.__resources.draw('frozen')
 
   def _collect(self):
     # Collects compatible nodes into merged nodes.
@@ -530,7 +532,6 @@ class Context(object):
     """
 
     self.ensure_frozen()
-    self.__resources.draw('frozen') # XXX
     for t in self.__resources.sorted_transitions():
       t.realize()
 

@@ -27,15 +27,11 @@ def transition(typename, **instructions_valdict):
 
 def ensure_resource(context, typename, depends=(), **valdict):
   r = resource(typename, **valdict)
-  r = context.ensure_resource(r)
-  for dep in depends:
-    context.ensure_dependency(dep, r)
+  r = context.ensure_resource(r, depends)
   return r
 
 def ensure_transition(context, typename, depends=(), **valdict):
   t = transition(typename, **valdict)
-  t = context.ensure_transition(t)
-  for dep in depends:
-    context.ensure_dependency(dep, t)
+  t = context.ensure_transition(t, depends)
   return t
 
