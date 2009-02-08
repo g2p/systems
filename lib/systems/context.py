@@ -163,24 +163,25 @@ class ResourceGraph(object):
       # Either it's the exact same resource, or a KeyError is thrown.
       return self._intern(resource)
     prebound = ResourceGraph()
-    for (name, value) in resource.iter_passed_by_ref():
+    for (name, ref) in resource.iter_passed_by_ref():
       # arg_refnode will be present in both graphs.
-      arg_refnode = self._pass_by_ref(prebound, name, value)
-      # XXX This is just a fixup method
-      resource.fixup_ref_arg(name, arg_refnode)
+      self._pass_by_ref(prebound, name, ref)
     self.__prebound[resource.identity] = prebound
     self.__expandables[resource.identity] = resource
-    for (name, value) in resource.iter_passed_by_ref():
-      assert isinstance(value, (CResource, EResource))
     return self._add_node(resource, depends)
 
-  @property
-  def refs_received(self):
+  def make_ref(self, res, depends=()):
+    res = self._intern(res)
+    if not isinstance(res, (CResource, EResource)):
+      raise TypeError(res, (CResource, EResource))
+    return self._add_node(ResourceRef(res), depends)
+
+  def _refs_received(self):
     return ImmutableDict(self.__received_refs)
 
-  def refs_passed(self, item):
+  def _refs_passed(self, item):
     item = self._intern(item)
-    return self.__prebound[item.identity].refs_received
+    return self.__prebound[item.identity]._refs_received()
 
   def _add_node_dep(self, node0, node1):
     if not isinstance(node0, node_types):
@@ -322,29 +323,21 @@ class ResourceGraph(object):
     self._graph.delete_node(res)
     return before, after
 
-  def _receive_by_ref(self, name, value):
+  def _receive_by_ref(self, name, ref):
     if name in self.__received_refs:
-      raise RuntimeError(name, value)
-    ref = self._add_node(ResourceRef(value))
+      raise RuntimeError(name, ref)
+    ref = self._add_node(ref)
     self.__received_refs[name] = ref
     return ref
 
-  def _pass_by_ref(self, subgraph, name, origin):
+  def _pass_by_ref(self, subgraph, name, ref):
     # The origin/value distinction is important
     # for aliased arguments (two refs, same val).
-    origin = self._intern(origin)
-    if isinstance(origin, (CResource, EResource)):
-      value = origin
-    elif isinstance(origin, ResourceRef):
-      # Handle passing received values again.
-      value = origin.unref
-    else:
-      raise TypeError(origin)
+    ref = self._intern(ref)
+    if not isinstance(ref, ResourceRef):
+      raise TypeError(ref, ResourceRef)
 
-    ref = subgraph._receive_by_ref(name, value)
-    self._add_node(ref)
-    self._add_node_dep(origin, ref)
-    return ref
+    subgraph._receive_by_ref(name, ref)
 
   def expand_resource(self, res):
     """
@@ -434,6 +427,17 @@ class Context(object):
     self.require_state('init')
 
     return self.__resources.add_transition(t, depends)
+
+  def ensure_ref(self, r, depends):
+    self.require_state('init')
+
+    return self.__resources.make_ref(r, depends)
+
+  @property
+  def resource_graph(self):
+    self.require_state('init')
+
+    return self.__resources
 
   def ensure_frozen(self):
     """

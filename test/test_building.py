@@ -14,6 +14,7 @@ from systems.dsl import resource, ensure_resource, ensure_transition
 from systems.util.templates import build_and_render
 
 gc = systems.context.global_context()
+rg = gc.resource_graph
 runpy.run_module('systems.transitions.__init__')['register']()
 
 cluster = ensure_resource(gc, 'PgCluster')
@@ -22,7 +23,7 @@ rails_sites = ensure_resource(gc, 'Directory',
 redmine = ensure_resource(gc, 'Redmine',
     name='main',
     path='/var/lib/rails-sites/redmine',
-    cluster=cluster,
+    cluster=cluster.ref(rg),
     depends=[rails_sites])
 
 ensure_transition(gc, 'Command',
@@ -40,9 +41,9 @@ ensure_resource(gc, 'AptitudePackage', name='python-networkx')
 ensure_resource(gc, 'User',
     name='zorglub', present=False, shell='/bin/true')
 
-u = ensure_resource(gc, 'PgUser', name='user-pfuuit', cluster=cluster)
+u = ensure_resource(gc, 'PgUser', name='user-pfuuit', cluster=cluster.ref(rg))
 d = ensure_resource(gc, 'PgDatabase',
-    owner=u, name='db-pfuuit', cluster=cluster)
+    owner=u.ref(rg), name='db-pfuuit', cluster=cluster.ref(rg))
 
 if False:
   ensure_resource(gc, 'SvnWorkingCopy',

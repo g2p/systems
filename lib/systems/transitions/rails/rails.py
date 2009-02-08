@@ -9,7 +9,7 @@ from systems.typesystem import AttrType, RefAttrType, ResourceType, EResource
 
 
 def is_valid_user(user):
-  return user.wanted_attrs['present'] is True
+  return user.unref.wanted_attrs['present'] is True
 
 class Rails(EResource):
   """
@@ -17,8 +17,9 @@ class Rails(EResource):
   """
 
   def expand_into(self, rg):
-    location = self.id_attrs['location']
-    if not location.wanted_attrs['present']:
+    loc_ref = self.id_attrs['location']
+    loc_path = loc_ref.unref.id_attrs['path']
+    if not loc_ref.unref.wanted_attrs['present']:
       raise ValueError
 
     rails_gem = rg.add_resource(resource('RubyGem',
@@ -33,14 +34,12 @@ class Rails(EResource):
         depends=(rails_gem, rake_pkg, ruby_pgsql_pkg, ssl_pkg))
 
     name = self.id_attrs['name']
-    cluster_ref = rg.refs_received['cluster']
-    run_user = self.wanted_attrs['run_user']
-    run_user_name = run_user.id_attrs['name']
-    run_user_ref = rg.refs_received['run_user']
+    cluster_ref = self.wanted_attrs['cluster']
+    run_user_ref = self.wanted_attrs['run_user']
+    run_user_name = run_user_ref.unref.id_attrs['name']
     # XXX Need to give an ACL from db_maint_user to db_run_user.
-    maint_user = self.wanted_attrs['maint_user']
-    maint_user_name = maint_user.id_attrs['name']
-    maint_user_ref = rg.refs_received['maint_user']
+    maint_user_ref = self.wanted_attrs['maint_user']
+    maint_user_name = maint_user_ref.unref.id_attrs['name']
 
     # Same name means 'local ident sameuser' auth will work.
     db_run_user = rg.add_resource(resource('PgUser',
@@ -64,7 +63,7 @@ class Rails(EResource):
           }
       db = rg.add_resource(resource('PgDatabase',
         name=db_name,
-        owner=db_maint_user,
+        owner=db_maint_user.ref(rg),
         cluster=cluster_ref,
         ))
       # Testing for db:version retcode doesn't work anymore.
@@ -72,11 +71,11 @@ class Rails(EResource):
         cmdline=['/usr/bin/rake', 'db:migrate'],
         username=maint_user_name,
         extra_env={ 'RAILS_ENV': env, },
-        cwd=location.id_attrs['path'],
+        cwd=loc_path,
         ),
         depends=(
           maint_user_ref,
-          rg.refs_received['location'],
+          loc_ref,
           pkgs,
           db,
           ))
@@ -84,22 +83,22 @@ class Rails(EResource):
     tmp_dirs = rg.add_transition(transition('Command',
       cmdline=['/usr/bin/rake', 'tmp:create'],
       username=maint_user_name,
-      cwd=location.id_attrs['path'],
+      cwd=loc_path,
       ),
       depends=(
         maint_user_ref,
-        rg.refs_received['location'],
+        loc_ref,
         pkgs,
         ))
 
     db_conf_str = yaml.safe_dump(db_conf_tree, default_flow_style=False)
     db_conf_file = rg.add_resource(resource('PlainFile',
-      path=location.id_attrs['path'] + '/config/database.yml',
+      path=loc_path + '/config/database.yml',
       contents=db_conf_str,
       mode='0644',
       ),
       depends=(
-        rg.refs_received['location'],
+        loc_ref,
         ))
     for mig in migs:
       rg.add_dependency(db_conf_file, mig)

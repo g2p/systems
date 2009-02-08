@@ -13,7 +13,7 @@ class Redmine(EResource):
 
   def expand_into(self, rg):
     svn_branch = self.wanted_attrs['svn_branch']
-    cluster_ref = rg.refs_received['cluster']
+    cluster_ref = self.wanted_attrs['cluster']
     rails_name = 'redmine-%s' % self.id_attrs['name']
     # Privileged (create tables, update checkout)
     maint_user_name = 'redmine-maint-%s' % self.id_attrs['name']
@@ -22,6 +22,8 @@ class Redmine(EResource):
 
     run_user = rg.add_resource(resource('User', name=run_user_name))
     maint_user = rg.add_resource(resource('User', name=maint_user_name))
+    run_user_ref = run_user.ref(rg)
+    maint_user_ref = maint_user.ref(rg)
     loc = rg.add_resource(resource('Directory',
         path=self.id_attrs['path'],
         owner=maint_user_name,
@@ -29,18 +31,19 @@ class Redmine(EResource):
         mode='0755',
         ),
       depends=(maint_user, ))
+    loc_ref = loc.ref(rg)
     co = rg.add_resource(resource('SvnWorkingCopy',
-        location=loc,
+        location=loc_ref,
         url=svn_branch,
         ))
+    loc_ref = rg.make_ref(loc, depends=(co, ))
     rails = rg.add_resource(resource('Rails',
         name=rails_name,
-        location=loc,
-        maint_user=maint_user,
-        run_user=run_user,
+        location=loc_ref,
+        maint_user=maint_user_ref,
+        run_user=run_user_ref,
         cluster=cluster_ref,
         ))
-    rg.add_dependency(co, rg.refs_passed(rails)['location'])
 
 
 def register():

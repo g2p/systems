@@ -8,7 +8,7 @@ __all__ = ('register', )
 
 
 def read_present(id_attrs):
-  cluster = id_attrs['cluster']
+  cluster = id_attrs['cluster'].unref
   name = id_attrs['name']
   return cluster.check_existence('pg_roles', 'rolname', name)
 
@@ -41,9 +41,9 @@ class PgUser(EResource):
 
     if tr is not None:
       cluster = self.id_attrs['cluster']
-      if not cluster.wanted_attrs['present']:
+      if not cluster.unref.wanted_attrs['present']:
         raise ValueError
-      rg.add_dependency(rg.refs_received['cluster'], tr)
+      rg.add_dependency(cluster, tr)
 
 def register():
   restype = ResourceType('PgUser', PgUser,

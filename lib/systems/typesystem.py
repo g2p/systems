@@ -125,7 +125,7 @@ class RefAttrType(AttrType):
       raise ValueError(self.rtypename)
     if 'pytype' in kargs:
       raise ValueError(kargs)
-    kargs['pytype'] = (ResourceBase, ResourceRef)
+    kargs['pytype'] = ResourceRef
     super(RefAttrType, self).__init__(**kargs)
 
   @property
@@ -140,8 +140,7 @@ class RefAttrType(AttrType):
     super(RefAttrType, self).require_valid_value(val)
     if val is None:
       return
-    if isinstance(val, ResourceRef):
-      val = val.unref
+    val = val.unref
     rtype = self._rtype()
     if val.rtype != rtype:
       raise TypeError(val.rtype, rtype)
@@ -464,6 +463,9 @@ class ResourceBase(ContractSupportBase):
     for item in self.wanted_attrs.iter_passed_by_ref():
       yield item
 
+  def ref(self, resource_graph):
+    return resource_graph.make_ref(self)
+
 
 class EResource(ResourceBase, Expandable):
   pass
@@ -477,6 +479,8 @@ class ResourceRef(object):
   """
 
   def __init__(self, target):
+    if not isinstance(target, ResourceBase):
+      raise TypeError(target, ResourceBase)
     self.__target = target
 
   @property

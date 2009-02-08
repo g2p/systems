@@ -11,7 +11,7 @@ from systems.util.templates import build_and_render
 __all__ = ('register', )
 
 def read_present(id_attrs):
-  cluster = id_attrs['cluster']
+  cluster = id_attrs['cluster'].unref
   name = id_attrs['name']
   return cluster.check_existence('pg_database', 'datname', name)
 
@@ -22,9 +22,9 @@ def is_valid_dbname(name):
 
 class PgDatabase(EResource):
   def expand_into(self, rg):
-    owner = self.wanted_attrs['owner']
-    cluster = self.id_attrs['cluster']
-    if owner.id_attrs['cluster'] != cluster:
+    owner = self.wanted_attrs['owner'].unref
+    cluster = self.id_attrs['cluster'].unref
+    if owner.id_attrs['cluster'].unref != cluster:
       raise ValueError
 
     p0, p1 = self.read_attrs()['present'], self.wanted_attrs['present']
@@ -42,8 +42,8 @@ class PgDatabase(EResource):
         raise ValueError
       if not cluster.wanted_attrs['present']:
         raise ValueError
-      rg.add_dependency(rg.refs_received['owner'], tr)
-      rg.add_dependency(rg.refs_received['cluster'], tr)
+      rg.add_dependency(self.wanted_attrs['owner'], tr)
+      rg.add_dependency(self.id_attrs['cluster'], tr)
 
     enable_backups = p1 and self.wanted_attrs['enable_backups']
     rg.add_resource(self.cron_backup_res(enable_backups))
@@ -67,8 +67,8 @@ exec /usr/bin/pg_dump -Fc \\
         contents=code.encode('utf8'), )
 
   def create_db_trans(self):
-    ownername = self.wanted_attrs['owner'].id_attrs['name']
-    cluster = self.id_attrs['cluster']
+    ownername = self.wanted_attrs['owner'].unref.id_attrs['name']
+    cluster = self.id_attrs['cluster'].unref
     name = self.id_attrs['name']
     return cluster.command_trans(
         cmdline=['/usr/bin/createdb', '-e',
@@ -78,18 +78,18 @@ exec /usr/bin/pg_dump -Fc \\
           ], )
 
   def update_owner_trans(self):
-    ownername = self.wanted_attrs['owner'].id_attrs['name']
+    ownername = self.wanted_attrs['owner'].unref.id_attrs['name']
     name = self.id_attrs['name']
     sql = build_and_render(
         """ALTER DATABASE "{{ name }}" OWNER TO "{{ ownername }}";""",
         name=name, ownername=ownername)
     sql = sql.encode('utf8')
 
-    cluster = self.id_attrs['cluster']
+    cluster = self.id_attrs['cluster'].unref
     return cluster.psql_eval_trans(sql)
 
   def drop_db_trans(self):
-    cluster = self.id_attrs['cluster']
+    cluster = self.id_attrs['cluster'].unref
     name = self.id_attrs['name']
     return cluster.command_trans(
         cmdline=['/usr/bin/dropdb', '-e',
