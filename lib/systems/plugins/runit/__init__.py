@@ -2,8 +2,8 @@
 from __future__ import absolute_import
 
 def register():
-  from . import svdir
-  svdir.register()
+  from . import dirservice
+  dirservice.register()
   from . import service
   service.register()
 

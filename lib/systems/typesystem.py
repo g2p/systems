@@ -22,7 +22,8 @@ class AttrType(object):
 
   def __init__(self,
       none_allowed=False, default_value=None,
-      valid_condition=None, pytype=None, rtype=None,
+      valid_condition=None, pytype=None,
+      valid_values=None,
       reader=None):
     """
     name: name of the attribute
@@ -42,10 +43,9 @@ class AttrType(object):
       raise ValueError("Can't set both none_allowed and default_value")
     if pytype is not None and not isinstance(pytype, (type, tuple)):
       raise TypeError
-    if rtype is not None and not isinstance(rtype, str):
-      raise TypeError
     self.__none_allowed = none_allowed
     self.__default_value = default_value
+    self.__valid_values = valid_values
     self.__valid_condition = valid_condition
     self.__pytype = pytype
     self.__reader = reader
@@ -96,6 +96,10 @@ class AttrType(object):
       if self.none_allowed:
         return
       raise ValueError(val)
+
+    if self.__valid_values is not None:
+      if not val in self.__valid_values:
+        raise ValueError(val, self.__valid_values)
 
     if self.__pytype is not None:
       if not isinstance(val, self.__pytype):

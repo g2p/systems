@@ -58,8 +58,14 @@ class Rails(EResource):
         mode='0755',
         ),
       depends=(loc_ref, ))
-    sv_dir = rg.add_resource(resource('SvDir',
-        location=sv_dir_loc.ref(rg),
+
+    sv_dir_serv_loc = rg.add_resource(resource('Directory',
+        path='/etc/service/' + name,
+        mode='0755',
+        ))
+    sv_dir_service = rg.add_resource(resource('DirService',
+        location=sv_dir_serv_loc.ref(rg),
+        target_dir=sv_dir_loc.ref(rg),
         ))
 
     db_conf_tree = {}
