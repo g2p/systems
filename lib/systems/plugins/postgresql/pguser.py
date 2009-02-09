@@ -41,7 +41,7 @@ class PgUser(EResource):
 
     if tr is not None:
       cluster = self.id_attrs['cluster']
-      if not cluster.unref.wanted_attrs['present']:
+      if not cluster.wanted_attrs['present']:
         raise ValueError
       rg.add_dependency(cluster, tr)
 

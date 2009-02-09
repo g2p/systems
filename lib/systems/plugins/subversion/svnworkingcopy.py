@@ -18,14 +18,14 @@ class SvnWorkingCopy(EResource):
   def expand_into(self, rg):
     loc_ref = self.id_attrs['location']
     # An alternative to valid_condition
-    if not loc_ref.unref.wanted_attrs['present']:
+    if not loc_ref.wanted_attrs['present']:
       raise ValueError
 
     pkg_ref = rg.add_to_top(resource('AptitudePackage', name='subversion'))
 
     repo_url = self.wanted_attrs['url']
-    path = loc_ref.unref.id_attrs['path']
-    owner = loc_ref.unref.wanted_attrs['owner']
+    path = loc_ref.id_attrs['path']
+    owner = loc_ref.wanted_attrs['owner']
 
     co = transition('Command',
         username=owner,

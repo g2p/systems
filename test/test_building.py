@@ -27,7 +27,7 @@ def expand(rg):
   redmine = rg.add_resource(resource('Redmine',
         name='main',
         path='/var/lib/rails-sites/redmine',
-        cluster=cluster.ref(rg),
+        cluster=cluster,
         ),
       depends=[rails_sites],
       )
@@ -39,7 +39,7 @@ def expand(rg):
   cmd_tr = rg.add_transition(transition('Command',
       cmdline=['/bin/echo', 'Chatty command is chatty']))
   LOGGER.debug(yaml.dump(cmd_tr))
-  LOGGER.debug(yaml.dump(yaml.load(yaml.dump(cluster.ref(rg)))))
+  LOGGER.debug(yaml.dump(yaml.load(yaml.dump(cluster))))
 
   text = build_and_render('Hello {{ name }}!\n', name='Jane Doe')
 
@@ -51,9 +51,9 @@ def expand(rg):
   rg.add_resource(resource('User',
       name='zorglub', present=False, shell='/bin/true'))
 
-  u = rg.add_resource(resource('PgUser', name='user-pfuuit', cluster=cluster.ref(rg)))
+  u = rg.add_resource(resource('PgUser', name='user-pfuuit', cluster=cluster))
   d = rg.add_resource(resource('PgDatabase',
-      owner=u.ref(rg), name='db-pfuuit', cluster=cluster.ref(rg)))
+      owner=u, name='db-pfuuit', cluster=cluster))
 
   dj_dir = rg.add_resource(resource('Directory',
         path='/tmp/django-queue-service',
@@ -61,7 +61,7 @@ def expand(rg):
         owner='nobody',
         group='nogroup'))
   svn_wc = rg.add_resource(resource('SvnWorkingCopy',
-      location=dj_dir.ref(rg),
+      location=dj_dir,
       url='http://django-queue-service.googlecode.com/svn/trunk/'))
   LOGGER.debug(yaml.dump(svn_wc))
 

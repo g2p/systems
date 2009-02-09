@@ -10,7 +10,7 @@ from systems.util.templates import build_and_render
 
 
 def is_valid_user(user):
-  return user.unref.wanted_attrs['present'] is True
+  return user.wanted_attrs['present'] is True
 
 class Rails(EResource):
   """
@@ -18,9 +18,9 @@ class Rails(EResource):
   """
 
   def expand_into(self, rg):
-    loc_ref = self.id_attrs['location']
-    loc_path = loc_ref.unref.id_attrs['path']
-    if not loc_ref.unref.wanted_attrs['present']:
+    loc = self.id_attrs['location']
+    loc_path = loc.id_attrs['path']
+    if not loc.wanted_attrs['present']:
       raise ValueError
 
     rails_gem = rg.add_resource(resource('RubyGem',
@@ -35,37 +35,37 @@ class Rails(EResource):
         depends=(rails_gem, rake_pkg, ruby_pgsql_pkg, ssl_pkg))
 
     name = self.id_attrs['name']
-    cluster_ref = self.wanted_attrs['cluster']
-    run_user_ref = self.wanted_attrs['run_user']
-    run_user_name = run_user_ref.unref.id_attrs['name']
+    cluster = self.wanted_attrs['cluster']
+    run_user = self.wanted_attrs['run_user']
+    run_user_name = run_user.id_attrs['name']
     # XXX Need to give an ACL from db_maint_user to db_run_user.
-    maint_user_ref = self.wanted_attrs['maint_user']
-    maint_user_name = maint_user_ref.unref.id_attrs['name']
+    maint_user = self.wanted_attrs['maint_user']
+    maint_user_name = maint_user.id_attrs['name']
 
     # Same name means 'local ident sameuser' auth will work.
     db_run_user = rg.add_resource(resource('PgUser',
       name=run_user_name,
-      cluster=cluster_ref,
+      cluster=cluster,
       ))
 
     db_maint_user = rg.add_resource(resource('PgUser',
       name=maint_user_name,
-      cluster=cluster_ref,
+      cluster=cluster,
       ))
 
     sv_dir_loc = rg.add_resource(resource('Directory',
         path=loc_path+'/service',
         mode='0755',
         ),
-      depends=(loc_ref, ))
+      depends=(loc, ))
 
     sv_dir_serv_loc = rg.add_resource(resource('Directory',
         path='/etc/service/' + name,
         mode='0755',
         ))
     sv_dir_service = rg.add_resource(resource('DirService',
-        location=sv_dir_serv_loc.ref(rg),
-        target_dir=sv_dir_loc.ref(rg),
+        location=sv_dir_serv_loc,
+        target_dir=sv_dir_loc,
         ))
 
     db_conf_tree = {}
@@ -81,8 +81,8 @@ class Rails(EResource):
           }
       db = rg.add_resource(resource('PgDatabase',
         name=db_name,
-        owner=db_maint_user.ref(rg),
-        cluster=cluster_ref,
+        owner=db_maint_user,
+        cluster=cluster,
         ))
       # Testing for db:version retcode doesn't work anymore.
       mig = rg.add_transition(transition('Command',
@@ -92,8 +92,8 @@ class Rails(EResource):
         cwd=loc_path,
         ),
         depends=(
-          maint_user_ref,
-          loc_ref,
+          maint_user,
+          loc,
           pkgs,
           db,
           ))
@@ -116,7 +116,7 @@ exec chpst -u {{ maint_user_name }} ./script/server webrick --environment {{ env
         port=env_ports[env],
         ).encode('utf8')
       sv = rg.add_resource(resource('Service',
-          location=sv_loc.ref(rg),
+          location=sv_loc,
           contents=sv_contents,
           ))
     tmp_dirs = rg.add_transition(transition('Command',
@@ -125,8 +125,8 @@ exec chpst -u {{ maint_user_name }} ./script/server webrick --environment {{ env
       cwd=loc_path,
       ),
       depends=(
-        maint_user_ref,
-        loc_ref,
+        maint_user,
+        loc,
         pkgs,
         ))
 
@@ -137,7 +137,7 @@ exec chpst -u {{ maint_user_name }} ./script/server webrick --environment {{ env
       mode='0644',
       ),
       depends=(
-        loc_ref,
+        loc,
         ))
     for mig in migs:
       rg.add_dependency(db_conf_file, mig)

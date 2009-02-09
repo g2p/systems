@@ -17,7 +17,7 @@ class DirService(EResource):
     present = self.wanted_attrs['present']
     status = self.wanted_attrs['status']
     target_dir_ref = self.wanted_attrs['target_dir']
-    target_path = target_dir_ref.unref.id_attrs['path']
+    target_path = target_dir_ref.id_attrs['path']
     contents = build_and_render('''#!/bin/sh
 exec 2>&1
 exec runsvdir {{ target_path }}

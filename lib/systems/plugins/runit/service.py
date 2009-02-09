@@ -13,7 +13,7 @@ class Service(EResource):
 
   def expand_into(self, rg):
     loc_ref = self.id_attrs['location']
-    loc_path = loc_ref.unref.id_attrs['path']
+    loc_path = loc_ref.id_attrs['path']
     run_file_path = loc_path + '/run'
     contents = self.wanted_attrs['contents']
     present = self.wanted_attrs['present']

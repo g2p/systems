@@ -211,7 +211,8 @@ class ResourceGraph(yaml.YAMLObject):
       self._pass_by_ref(prebound, name, ref)
     self.__prebound[resource.identity] = prebound
     self.__expandables[resource.identity] = resource
-    return self._add_node(resource, depends)
+    resource = self._add_node(resource, depends)
+    return self.make_ref(resource)
 
   def make_ref(self, res, depends=()):
     res = self._intern(res)
@@ -221,6 +222,14 @@ class ResourceGraph(yaml.YAMLObject):
     depends.append(res)
     return self._add_node(ResourceRef(res), depends)
 
+  def make_alias_ref(self, ref, depends=()):
+    ref = self._intern(ref)
+    if not isinstance(ref, ResourceRef):
+      raise TypeError(ref, ResourceRef)
+    depends = list(depends)
+    depends.append(ref)
+    return self._add_node(ResourceRef(ref.unref), depends)
+
   def add_to_top(self, res):
     """
     Add a resource to the top ResourceGraph.
@@ -229,8 +238,7 @@ class ResourceGraph(yaml.YAMLObject):
     want to be after the outside dependencies the current graph has.
     """
 
-    res = self.__top.add_resource(res)
-    ref = self.__top.make_ref(res)
+    ref = self.__top.add_resource(res)
     return self._add_node(ref)
 
   def _refs_received(self):

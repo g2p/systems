@@ -67,7 +67,7 @@ exec /usr/bin/pg_dump -Fc \\
         contents=code.encode('utf8'), )
 
   def create_db_trans(self):
-    ownername = self.wanted_attrs['owner'].unref.id_attrs['name']
+    ownername = self.wanted_attrs['owner'].id_attrs['name']
     cluster = self.id_attrs['cluster'].unref
     name = self.id_attrs['name']
     return cluster.command_trans(
@@ -78,7 +78,7 @@ exec /usr/bin/pg_dump -Fc \\
           ], )
 
   def update_owner_trans(self):
-    ownername = self.wanted_attrs['owner'].unref.id_attrs['name']
+    ownername = self.wanted_attrs['owner'].id_attrs['name']
     name = self.id_attrs['name']
     sql = build_and_render(
         """ALTER DATABASE "{{ name }}" OWNER TO "{{ ownername }}";""",

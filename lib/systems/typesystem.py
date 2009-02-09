@@ -425,6 +425,15 @@ class ResourceBase(ContractSupportBase):
   def wanted_attrs(self):
     return self.__wanted_attrs
 
+  def read_attrs(self):
+    """
+    Attribute values as they are read from system state.
+    """
+
+    # This is a method and not a property because it is not deterministic.
+
+    return self.__read_attrs
+
   @property
   def identity(self):
     return (self.rtype.name, self.__id_attrs)
@@ -448,24 +457,11 @@ class ResourceBase(ContractSupportBase):
   def rtype(self):
     return self.__rtype
 
-  def read_attrs(self):
-    """
-    Attribute values as they are read from system state.
-    """
-
-    # This is a method and not a property because it is not deterministic.
-
-    return self.__read_attrs
-
   def iter_passed_by_ref(self):
     for item in self.id_attrs.iter_passed_by_ref():
       yield item
     for item in self.wanted_attrs.iter_passed_by_ref():
       yield item
-
-  def ref(self, resource_graph):
-    # XXX make_ref may be enough.
-    return resource_graph.make_ref(self)
 
   yaml_tag_prefix = u'!Resource:'
 
@@ -529,6 +525,18 @@ class ResourceRef(yaml.YAMLObject):
 
   def __repr__(self):
     return 'ResourceRef(%r)' % self.unref
+
+  @property
+  def id_attrs(self):
+    return self.unref.id_attrs
+
+  @property
+  def wanted_attrs(self):
+    return self.unref.wanted_attrs
+
+  @property
+  def read_attrs(self):
+    return self.unref.read_attrs
 
   yaml_tag = u'!ResourceRef'
 
