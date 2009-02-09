@@ -20,7 +20,7 @@ from systems.util.templates import build_and_render
 
 load_plugin('systems.plugins')
 
-def run_tests(rg):
+def expand(rg):
   cluster = rg.add_resource(resource('PgCluster'))
   rails_sites = rg.add_resource(resource('Directory',
       path='/var/lib/rails-sites', mode='0755'))
@@ -88,6 +88,9 @@ def run_tests(rg):
   test_gitosis('g2p-moulinex.pub')
 
 
-Realizer(FunExpandable(run_tests)).realize()
+def run_test():
+  Realizer(FunExpandable(expand)).realize()
 
+if __name__ == '__main__':
+  run_test()
 
