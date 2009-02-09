@@ -249,6 +249,7 @@ class ResourceGraph(yaml.YAMLObject):
       # Disallow self-loops to keep acyclic invariant.
       # Also they don't make sense.
       raise ValueError(node0)
+    # Invariant check
     rev_path = NX.shortest_path(self._graph, node1, node0)
     if rev_path is not False:
       raise CycleError(rev_path)
@@ -340,20 +341,21 @@ class ResourceGraph(yaml.YAMLObject):
       if r0 in self.__processed:
         raise RuntimeError
 
+    if r1 in self._graph:
+      raise ValueError(r1)
     r1 = self._add_aggregate(r1)
-    r1 = self._intern(r1)
 
     for r0 in r0s:
       r0 = self._intern(r0)
       self._move_edges(r0, r1)
       self.__processed.add(r0)
+    self.require_acyclic()
 
   def _move_edges(self, n0, n1):
     if n0 == n1:
       raise RuntimeError
     n0 = self._intern(n0)
     n1 = self._intern(n1)
-    self.require_acyclic()
     # list is used as a temporary
     # add after delete in case of same.
     for pred in list(self._graph.predecessors_iter(n0)):
@@ -364,7 +366,6 @@ class ResourceGraph(yaml.YAMLObject):
       self._graph.add_edge(n1, succ)
     self._graph.delete_node(n0)
     # Can't undo. Invariant will stay broken.
-    self.require_acyclic()
 
   def _split_node(self, res):
     res = self._intern(res)
@@ -445,10 +446,8 @@ class ResourceGraph(yaml.YAMLObject):
     self._move_edges(resource_graph._first, before)
     self._move_edges(resource_graph._last, after)
     # What may break the invariant:
-    # A dependency is put before a resource (through another dependency),
-    # but the resource also calls up the same dependency internally.
-    # The problem is, the dependency appears at both sides
-    # of resource._before.
+    # Passing a ref to res, and making res depend on ref.
+    # ref ends up on both sides of ref.before.
     self.require_acyclic()
 
 
