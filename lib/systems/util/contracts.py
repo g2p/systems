@@ -121,14 +121,14 @@ class ContractSupportBase(object):
 
 def precondition(precond_fn):
   """
-  Usage:
-  class foo(ContractSupportBase):
-    def _precond(self, foo):
-      if foo < 0:
-        raise ValueError
-    @precondition(_precond)
-    def method(self):
-      pass
+  Usage::
+    class foo(ContractSupportBase):
+      def _precond(self, foo):
+        if foo < 0:
+          raise ValueError
+      @precondition(_precond)
+      def method(self):
+        pass
   """
 
   def partial_application(checked_fn):
