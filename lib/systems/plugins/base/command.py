@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import with_statement
 
+import logging
 import os
 import pwd
 import subprocess
@@ -11,6 +12,8 @@ from systems.typesystem import AttrType, TransitionType, Transition
 from systems.util.uid import drop_privs_permanently
 
 __all__ = ('register', )
+
+LOGGER = logging.getLogger(__name__)
 
 class Command(Transition):
   """
@@ -146,6 +149,7 @@ class Command(Transition):
     else:
       stdout_flag = None
 
+    #LOGGER.debug('Running command %r', dict(self.instr_attrs))
     p = subprocess.Popen(
         self.instr_attrs['cmdline'],
         stdin=stdin_flag,

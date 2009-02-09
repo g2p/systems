@@ -84,6 +84,10 @@ class User(EResource):
     if (p0, p1) == (False, False):
       return
     elif (p0, p1) == (True, True):
+      if home == self.read_attrs()['home']:
+        home = None
+      if shell == self.read_attrs()['shell']:
+        shell = None
       if (home, shell) == (None, None):
         return
       cmdline = ['/usr/sbin/usermod', ]

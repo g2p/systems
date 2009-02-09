@@ -387,7 +387,8 @@ class Expandable(object):
   """
 
   def before_expand(self, resource_graph):
-    LOGGER.debug('Before expand: %s', self)
+    #LOGGER.debug('Before expand: %s', self)
+    pass
 
   @precondition(before_expand)
   def expand_into(self, resource_graph):
