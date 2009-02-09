@@ -502,7 +502,7 @@ class EResource(ResourceBase, Expandable):
   pass
 
 
-class ResourceRef(object):
+class ResourceRef(yaml.YAMLObject):
   """
   This is somewhat similar to C++ references.
 
@@ -520,6 +520,17 @@ class ResourceRef(object):
 
   def __repr__(self):
     return 'ResourceRef(%r)' % self.unref
+
+  yaml_tag = u'!ResourceRef'
+
+  @classmethod
+  def from_yaml(cls, loader, node):
+    return cls(loader.construct_mapping(node)['target'])
+
+  @classmethod
+  def to_yaml(cls, dumper, data):
+    # A mapping is overkill, but I don't know any other way.
+    return dumper.represent_mapping(cls.yaml_tag, {'target': data.unref})
 
 
 class Transition(object):

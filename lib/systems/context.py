@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from logging import getLogger
 
 import networkx as NX
+import yaml
 
 from systems.collector import Aggregate, CResource
 from systems.registry import get_registry
@@ -54,11 +55,11 @@ class AfterExpandableNode(ExpandableNode):
   def __str__(self):
     return 'After %s' % self._res
 
-class GraphFirstNode(Node):
-  pass
+class GraphFirstNode(Node, yaml.YAMLObject):
+  yaml_tag = u'GraphFirstNode'
 
-class GraphLastNode(Node):
-  pass
+class GraphLastNode(Node, yaml.YAMLObject):
+  yaml_tag = u'GraphLastNode'
 
 node_types = (Node, Transition, Aggregate, CResource, EResource, ResourceRef)
 
