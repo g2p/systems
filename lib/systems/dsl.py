@@ -2,8 +2,6 @@
 from __future__ import absolute_import
 
 from systems.registry import get_registry
-from systems.typesystem import Expandable
-
 
 def resource_type(typename):
   return get_registry().resource_types.lookup(typename)

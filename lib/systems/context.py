@@ -10,7 +10,6 @@ import yaml
 from systems.collector import Aggregate, CResource
 from systems.registry import get_registry
 from systems.typesystem import EResource, Transition, ResourceRef
-from systems.util.datatypes import ImmutableDict
 
 __all__ = ('Realizer', )
 
@@ -86,7 +85,6 @@ class ResourceGraph(yaml.YAMLObject):
     # What nodes were processed (meaning expanding or collecting)
     self.__processed = set()
     # Pre-bound args pased by ref. Allow putting extra depends on them.
-    self.__prebound = {}
     if top is not None:
       if not isinstance(top, ResourceGraph):
         raise TypeError(top, ResourceGraph)
@@ -205,11 +203,6 @@ class ResourceGraph(yaml.YAMLObject):
       # We have this id already.
       # Either it's the exact same resource, or a KeyError is thrown.
       return self._intern(resource)
-    prebound = ResourceGraph(self.__top)
-    for (name, ref) in resource.iter_passed_by_ref():
-      # arg_refnode will be present in both graphs.
-      self._pass_by_ref(prebound, name, ref)
-    self.__prebound[resource.identity] = prebound
     self.__expandables[resource.identity] = resource
     resource = self._add_node(resource, depends)
     return self.make_ref(resource)
@@ -240,13 +233,6 @@ class ResourceGraph(yaml.YAMLObject):
 
     ref = self.__top.add_resource(res)
     return self._add_node(ref)
-
-  def _refs_received(self):
-    return ImmutableDict(self.__received_refs)
-
-  def _refs_passed(self, item):
-    item = self._intern(item)
-    return self.__prebound[item.identity]._refs_received()
 
   def _add_node_dep(self, node0, node1):
     if not isinstance(node0, node_types):
@@ -424,13 +410,17 @@ class ResourceGraph(yaml.YAMLObject):
     if res in self.__processed:
       raise RuntimeError
 
+    resource_graph = ResourceGraph(self.__top)
     if isinstance(res, EResource):
-      resource_graph = self.__prebound[res.identity]
+      for (name, ref) in res.iter_passed_by_ref():
+        # ref will be present in both graphs.
+        self._pass_by_ref(resource_graph, name, ref)
     elif isinstance(res, Aggregate):
-      resource_graph = ResourceGraph(self.__top)
+      pass
     else:
-      raise TypeError
+      raise TypeError(res)
     res.expand_into(resource_graph)
+    # We expand from the outside in
     if bool(resource_graph.__processed):
       raise RuntimeError
 
@@ -439,11 +429,6 @@ class ResourceGraph(yaml.YAMLObject):
       self._add_node(n)
     for (n0, n1) in resource_graph._graph.edges_iter():
       self._add_node_dep(n0, n1)
-
-    for (id1, rg1) in resource_graph.__prebound.iteritems():
-      if id1 in self.__prebound:
-        raise RuntimeError
-      self.__prebound[id1] = rg1
 
     for (id1, res1) in resource_graph.__expandables.iteritems():
       # We expand from the outside in.
