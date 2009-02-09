@@ -272,6 +272,9 @@ class ResourceType(Named):
 
   def make_instance(self, valdict):
     id_valdict, wanted_valdict = self._separate_valdict(valdict)
+    return self.make_instance_sep(id_valdict, wanted_valdict)
+
+  def make_instance_sep(self, id_valdict, wanted_valdict):
     return self.__instance_class(self, id_valdict, wanted_valdict)
 
   def make_read_instance(self, id_valdict):
@@ -466,7 +469,8 @@ class ResourceBase(ContractSupportBase):
     from systems.registry import get_registry
     mp = loader.construct_mapping(node)
     rtype = get_registry().resource_types.lookup(tag_suffix)
-    return cls(rtype, id_valdict=mp['id'], wanted_valdict=mp['wanted'])
+    return rtype.make_instance_sep(
+        id_valdict=mp['id'], wanted_valdict=mp['wanted'])
 
   @classmethod
   def to_yaml(cls, dumper, data):
@@ -575,7 +579,7 @@ class Transition(object):
     from systems.registry import get_registry
     mp = loader.construct_mapping(node)
     ttype = get_registry().transition_types.lookup(tag_suffix)
-    return cls(ttype, id_valdict=mp['instr'])
+    return ttype.make_instance(instr_valdict=mp['instr'])
 
   @classmethod
   def to_yaml(cls, dumper, data):

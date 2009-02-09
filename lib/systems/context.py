@@ -1,5 +1,6 @@
 # vim: set fileencoding=utf-8 sw=2 ts=2 et :
 from __future__ import absolute_import
+from __future__ import with_statement
 
 from logging import getLogger
 
@@ -63,7 +64,7 @@ class GraphLastNode(Node, yaml.YAMLObject):
 
 node_types = (Node, Transition, Aggregate, CResource, EResource, ResourceRef)
 
-class ResourceGraph(object):
+class ResourceGraph(yaml.YAMLObject):
   """
   A graph of resources and transitions linked by dependencies.
 
@@ -93,8 +94,42 @@ class ResourceGraph(object):
     else:
       self.__top = self
 
+  yaml_tag = u'!ResourceGraph'
+
+  @classmethod
+  def from_yaml(cls, loader, ynode):
+    rg = cls()
+    # Deep because of aliases and anchors, I think.
+    mp = loader.construct_mapping(ynode, deep=True)
+    pred_rels = mp['nodes']
+    for rel in pred_rels:
+      rg._add_node(rel['node'], depends=rel['depends'])
+    return rg
+
+  @classmethod
+  def to_yaml(cls, dumper, rg):
+    # This is incomplete.
+    pred_rels = [{'node': node, 'depends': list(depends), }
+        for (node, depends) in rg._iter_pred_rels()]
+    return dumper.represent_mapping(cls.yaml_tag, {
+      'nodes': pred_rels,
+      })
+
+  def _iter_node_preds(self, node0):
+    return (node
+        for node in self._graph.predecessors_iter(node0)
+        if node not in (self._first, self._last))
+
+  def _iter_pred_rels(self):
+    return ((node, self._iter_node_preds(node))
+      for node in self.sorted_nodes()
+      if node not in (self._first, self._last))
+
+  def sorted_nodes(self):
+    return NX.topological_sort(self._graph)
+
   def sorted_transitions(self):
-    return [n for n in NX.topological_sort(self._graph)
+    return [n for n in self.sorted_nodes()
         if isinstance(n, Transition)]
 
   def iter_uncollected_resources(self):
@@ -105,7 +140,7 @@ class ResourceGraph(object):
 
   def iter_unexpanded_resources(self):
     for nod in self._graph.nodes_iter():
-      if isinstance(nod, EResource) and not isinstance(nod, CResource):
+      if isinstance(nod, EResource):
         if not nod in self.__processed:
           yield nod
 
@@ -282,7 +317,10 @@ class ResourceGraph(object):
     # Dot is good for DAGs.
     g.layout(prog='dot')
     g.draw(fname + '.svg')
-    NX.write_yaml(self._graph, fname + '.yaml')
+    with open(fname + '.yaml', 'w') as f:
+      yaml.dump(self, f)
+    # Fails with the expanded graph, due to instancemethod
+    #yaml.load(yaml.dump(self))
 
   def draw_matplotlib(self, fname):
     # Pyplot is stateful and awkward to use.
