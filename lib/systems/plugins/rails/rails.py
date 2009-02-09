@@ -91,12 +91,7 @@ class Rails(EResource):
         extra_env={ 'RAILS_ENV': env, },
         cwd=loc_path,
         ),
-        depends=(
-          maint_user,
-          loc,
-          pkgs,
-          db,
-          ))
+        depends=(maint_user, loc, pkgs, db, ))
       migs.append(mig)
       sv_loc_path = loc_path + '/service/' + env
       sv_loc = rg.add_resource(resource('Directory',
@@ -124,11 +119,7 @@ exec chpst -u {{ maint_user_name }} ./script/server webrick --environment {{ env
       username=maint_user_name,
       cwd=loc_path,
       ),
-      depends=(
-        maint_user,
-        loc,
-        pkgs,
-        ))
+      depends=(maint_user, loc, pkgs, ))
 
     db_conf_str = yaml.safe_dump(db_conf_tree, default_flow_style=False)
     db_conf_file = rg.add_resource(resource('PlainFile',
@@ -136,9 +127,7 @@ exec chpst -u {{ maint_user_name }} ./script/server webrick --environment {{ env
       contents=db_conf_str,
       mode='0644',
       ),
-      depends=(
-        loc,
-        ))
+      depends=(loc, ))
     for mig in migs:
       rg.add_dependency(db_conf_file, mig)
 
