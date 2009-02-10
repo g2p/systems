@@ -92,6 +92,7 @@ setup(name='Systems',
       packages=[
            'systems',
            'systems.plugins',
+           'systems.plugins.apache2',
            'systems.plugins.base',
            'systems.plugins.files',
            'systems.plugins.packages',
