@@ -27,6 +27,7 @@ def expand(rg):
   redmine = rg.add_resource(resource('Redmine',
         name='main',
         path='/var/lib/rails-sites/redmine',
+        hostname='volutes.localdomain',
         cluster=cluster,
         ),
       depends=[rails_sites],
@@ -91,7 +92,7 @@ def expand(rg):
 def run_test():
   r = Realizer(FunExpandable(expand))
   r.ensure_frozen()
-  #r.realize()
+  r.realize()
 
 if __name__ == '__main__':
   run_test()

@@ -2,6 +2,8 @@
 from __future__ import absolute_import
 
 def register():
+  from . import apache2
+  apache2.register()
   from . import base
   base.register()
   from . import files

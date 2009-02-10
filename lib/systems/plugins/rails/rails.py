@@ -35,6 +35,7 @@ class Rails(EResource):
         depends=(rails_gem, rake_pkg, ruby_pgsql_pkg, ssl_pkg))
 
     name = self.id_attrs['name']
+    hostname = self.wanted_attrs['hostname']
     cluster = self.wanted_attrs['cluster']
     run_user = self.wanted_attrs['run_user']
     run_user_name = run_user.id_attrs['name']
@@ -131,6 +132,12 @@ exec chpst -u {{ maint_user_name }} ./script/server webrick --environment {{ env
     for mig in migs:
       rg.add_dependency(db_conf_file, mig)
 
+    passenger_site = rg.add_resource(resource('PassengerSite',
+        name=name,
+        hostname=hostname,
+        rails_dir=loc,
+        ))
+
 
 def register():
   # We should have UNIQUE (location) and UNIQUE (name),
@@ -151,6 +158,9 @@ def register():
       'run_user': RefAttrType(
         valid_condition=is_valid_user,
         rtype='User'),
+      'hostname': AttrType(
+        default_value='localhost',
+        pytype=str),
       'cluster': RefAttrType(
         rtype='PgCluster'),
       })

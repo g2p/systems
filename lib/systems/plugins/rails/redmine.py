@@ -14,6 +14,7 @@ class Redmine(EResource):
   def expand_into(self, rg):
     svn_branch = self.wanted_attrs['svn_branch']
     cluster = self.wanted_attrs['cluster']
+    hostname = self.wanted_attrs['hostname']
     rails_name = 'redmine-%s' % self.id_attrs['name']
     # Privileged (create tables, update checkout)
     maint_user_name = 'redmine-maint-%s' % self.id_attrs['name']
@@ -39,6 +40,7 @@ class Redmine(EResource):
         location=loc_alias,
         maint_user=maint_user,
         run_user=run_user,
+        hostname=hostname,
         cluster=cluster,
         ))
 
@@ -55,6 +57,9 @@ def register():
     state_type={
       'svn_branch': AttrType(
         default_value='http://redmine.rubyforge.org/svn/branches/0.8-stable/',
+        pytype=str),
+      'hostname': AttrType(
+        default_value='localhost',
         pytype=str),
       'cluster': RefAttrType(
         rtype='PgCluster'),
