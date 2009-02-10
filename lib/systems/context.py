@@ -61,7 +61,9 @@ class GraphFirstNode(Node, yaml.YAMLObject):
 class GraphLastNode(Node, yaml.YAMLObject):
   yaml_tag = u'GraphLastNode'
 
-node_types = (Node, Transition, Aggregate, CResource, EResource, ResourceRef)
+node_types = (CheckPointNode, BeforeExpandableNode, AfterExpandableNode,
+    GraphFirstNode, GraphLastNode,
+    Transition, Aggregate, CResource, EResource, ResourceRef)
 
 class ResourceGraph(yaml.YAMLObject):
   """
@@ -481,14 +483,14 @@ class Realizer(object):
     # Order is important
     self.require_state('init')
     self.__expandable.expand_into(self.__resources)
-    self.__resources.draw('/tmp/freezing')
+    #self.__resources.draw('/tmp/freezing')
     self._expand()
-    self.__resources.draw('/tmp/pre-collect')
+    #self.__resources.draw('/tmp/pre-collect')
     self._collect()
     self._expand_aggregates()
     assert not bool(list(self.__resources.iter_unprocessed()))
     self.__state = 'frozen'
-    self.__resources.draw('/tmp/frozen')
+    #self.__resources.draw('/tmp/frozen')
 
   def _collect(self):
     # Collects compatible nodes into merged nodes.
