@@ -114,6 +114,7 @@ exec chpst -u {{ maint_user_name }} ./script/server webrick --environment {{ env
       sv = rg.add_resource(resource('Service',
           location=sv_loc,
           contents=sv_contents,
+          status='down',
           ))
     tmp_dirs = rg.add_transition(transition('Command',
       cmdline=['/usr/bin/rake', 'tmp:create'],
