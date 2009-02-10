@@ -22,28 +22,18 @@ def is_valid_dbname(name):
 
 class PgDatabase(EResource):
   def expand_into(self, rg):
-    owner = self.wanted_attrs['owner'].unref
-    cluster = self.id_attrs['cluster'].unref
+    owner = self.wanted_attrs['owner']
+    cluster = self.id_attrs['cluster']
     if owner.id_attrs['cluster'].unref != cluster:
       raise ValueError
 
     p0, p1 = self.read_attrs()['present'], self.wanted_attrs['present']
     if (p0, p1) == (False, True):
-      tr = rg.add_transition(self.create_db_trans())
+      tr = rg.add_transition(self.create_db_trans(), (owner, cluster))
     elif (p0, p1) == (True, True):
-      tr = rg.add_transition(self.update_owner_trans())
+      tr = rg.add_transition(self.update_owner_trans(), (owner, cluster))
     elif (p0, p1) == (True, False):
-      tr = rg.add_transition(self.drop_db_trans())
-    else:
-      tr = None
-
-    if tr is not None:
-      if not owner.wanted_attrs['present']:
-        raise ValueError
-      if not cluster.wanted_attrs['present']:
-        raise ValueError
-      rg.add_dependency(self.wanted_attrs['owner'], tr)
-      rg.add_dependency(self.id_attrs['cluster'], tr)
+      tr = rg.add_transition(self.drop_db_trans(), (owner, cluster))
 
     enable_backups = p1 and self.wanted_attrs['enable_backups']
     rg.add_resource(self.cron_backup_res(enable_backups))

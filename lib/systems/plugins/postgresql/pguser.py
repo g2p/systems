@@ -31,19 +31,18 @@ def drop_user_trans(id_attrs):
 
 class PgUser(EResource):
   def expand_into(self, rg):
+    cluster = self.id_attrs['cluster']
     p0, p1 = self.read_attrs()['present'], self.wanted_attrs['present']
     if (p0, p1) == (False, True):
-      tr = rg.add_transition(create_user_trans(self.id_attrs))
+      tr = rg.add_transition(create_user_trans(self.id_attrs), (cluster, ))
     elif (p0, p1) == (True, False):
-      tr = rg.add_transition(drop_user_trans(self.id_attrs))
+      tr = rg.add_transition(drop_user_trans(self.id_attrs), (cluster, ))
     else:
       tr = None
 
     if tr is not None:
-      cluster = self.id_attrs['cluster']
       if not cluster.wanted_attrs['present']:
         raise ValueError
-      rg.add_dependency(cluster, tr)
 
 def register():
   restype = ResourceType('PgUser', PgUser,

@@ -27,20 +27,16 @@ class SvnWorkingCopy(EResource):
     path = loc_ref.id_attrs['path']
     owner = loc_ref.wanted_attrs['owner']
 
-    co = transition('Command',
+    co = rg.add_transition(transition('Command',
         username=owner,
         cmdline=['/usr/bin/svn', 'checkout', '--non-interactive', '--force',
-          '--', repo_url, path, ])
-    up = transition('Command',
+          '--', repo_url, path, ]),
+      depends=(pkg_ref, loc_ref, ))
+    up = rg.add_transition(transition('Command',
         username=owner,
         cmdline=['/usr/bin/svn', 'update', '--non-interactive', '--force',
-          '--', path, ])
-
-    rg.add_transition(co)
-    rg.add_transition(up)
-    rg.add_dependency(pkg_ref, co)
-    rg.add_dependency(loc_ref, co)
-    rg.add_dependency(co, up)
+          '--', path, ]),
+      depends=(co, ))
 
 
 def register():
