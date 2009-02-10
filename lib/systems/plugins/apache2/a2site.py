@@ -7,7 +7,7 @@ from systems.typesystem import AttrType, ResourceType, EResource
 from systems.util.templates import build_and_render
 
 
-class Site(EResource):
+class A2Site(EResource):
   """
   An apache2 site.
   """
@@ -31,7 +31,7 @@ NameVirtualHost {{ hostname }}:{{ port }}
       contents=contents,
       hostname=hostname,
       port=port).encode('utf8')
-    apache2 = rg.add_resource(resource('AptitudePackage',
+    apache2 = rg.add_to_top(resource('AptitudePackage',
         name='apache2.2-common',
         ))
     site_file = rg.add_resource(resource('PlainFile',
@@ -50,7 +50,7 @@ NameVirtualHost {{ hostname }}:{{ port }}
 
 
 def register():
-  restype = ResourceType('Site', Site,
+  restype = ResourceType('A2Site', A2Site,
     id_type={
       'name': AttrType(
         pytype=str),

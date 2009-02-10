@@ -34,6 +34,7 @@ class Redmine(EResource):
         location=loc,
         url=svn_branch,
         ))
+    rewrite_mod = rg.add_resource(resource('A2Mod', name='rewrite'))
     loc_alias = rg.make_alias_ref(loc, depends=(co, ))
     rails = rg.add_resource(resource('Rails',
         name=rails_name,

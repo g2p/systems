@@ -32,7 +32,7 @@ RailsBaseUri /
         name='fastthread', version='1.0.1'))
     worker_mpm = rg.add_resource(resource('AptitudePackage',
         name='apache2-mpm-worker'))
-    rg.add_resource(resource('Site',
+    rg.add_resource(resource('A2Site',
         name=name,
         present=present,
         enabled=enabled,
