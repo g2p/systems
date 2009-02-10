@@ -204,9 +204,12 @@ class ResourceGraph(yaml.YAMLObject):
     if resource.identity in self.__expandables:
       # We have this id already.
       # Either it's the exact same resource, or a KeyError is thrown.
-      return self._intern(resource)
-    self.__expandables[resource.identity] = resource
+      resource = self._intern(resource)
+    else:
+      self.__expandables[resource.identity] = resource
+    # Even if already there, we need to add the depends.
     resource = self._add_node(resource, depends)
+    # If already there, notice we aliase it.
     return self.make_ref(resource)
 
   def make_ref(self, res, depends=()):

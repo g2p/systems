@@ -24,7 +24,7 @@ class PgDatabase(EResource):
   def expand_into(self, rg):
     owner = self.wanted_attrs['owner']
     cluster = self.id_attrs['cluster']
-    if owner.id_attrs['cluster'].unref != cluster:
+    if owner.id_attrs['cluster'].unref != cluster.unref:
       raise ValueError
 
     p0, p1 = self.read_attrs()['present'], self.wanted_attrs['present']
