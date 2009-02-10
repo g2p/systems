@@ -38,6 +38,7 @@ NameVirtualHost {{ hostname }}:{{ port }}
         path='/etc/apache2/sites-available/' + name,
         contents=fcontents,
         present=present,
+        mode='0644',
         ),
       depends=[apache2])
     cmd = '/usr/sbin/a2%ssite' % { True: 'en', False: 'dis', }[enabled]
@@ -45,6 +46,7 @@ NameVirtualHost {{ hostname }}:{{ port }}
         cmdline=[cmd, name, ]
         ),
       depends=[site_file])
+    # XXX invoke-rc.d apache2 reload on any state change.
 
 
 def register():
