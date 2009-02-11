@@ -18,7 +18,7 @@ def read_present(id_attrs):
 def is_valid_dbname(name):
   # See the run-parts manpage for restrictions on cron file names.
   # We could encode stuff using dashes, but it's too much trouble.
-  return re.match('^[a-z0-9-]*$', name)
+  return re.match('^[a-zA-Z0-9_-]+$', name)
 
 class PgDatabase(EResource):
   def expand_into(self, rg):
@@ -49,11 +49,12 @@ exec /usr/bin/pg_dump -Fc \\
 '''
     code = build_and_render(template, dbname=dbname)
 
+    # Name and mode are important for run-parts to consider the script.
     fname = '/etc/cron.daily/db-backup-' + dbname
     return resource('PlainFile',
         present=enable_backups,
         path=fname,
-        mode='0700',
+        mode='0755',
         contents=code.encode('utf8'), )
 
   def create_db_trans(self):

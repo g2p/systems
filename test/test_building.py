@@ -92,7 +92,7 @@ def expand(rg):
 def run_test():
   r = Realizer(FunExpandable(expand))
   r.ensure_frozen()
-  #r.realize()
+  r.realize()
 
 if __name__ == '__main__':
   run_test()
