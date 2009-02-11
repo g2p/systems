@@ -7,9 +7,9 @@ from systems.typesystem import AttrType, ResourceType, EResource
 from systems.util.templates import build_and_render
 
 
-class A2Mod(EResource):
+class Key(EResource):
   """
-  An apache2 module.
+  A GPG key, comprised of public and private parts.
   """
 
   def expand_into(self, rg):
@@ -27,7 +27,7 @@ class A2Mod(EResource):
 
 
 def register():
-  restype = ResourceType('A2Mod', A2Mod,
+  restype = ResourceType('Key', Key,
     id_type={
       'name': AttrType(
         pytype=str),
