@@ -23,7 +23,12 @@ class A2Mod(EResource):
         cmdline=[cmd, name, ]
         ),
       depends=[apache2])
-    # XXX invoke-rc.d apache2 force-reload on any state change.
+    # We don't need to restart everytime, which takes some time.
+    reload = rg.add_transition(transition('Command',
+        cmdline=['/usr/sbin/invoke-rc.d', 'apache2', 'restart', ],
+        ),
+      depends=[endis],
+      )
 
 
 def register():

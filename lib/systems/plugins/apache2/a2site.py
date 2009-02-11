@@ -46,7 +46,12 @@ NameVirtualHost {{ hostname }}:{{ port }}
         cmdline=[cmd, name, ]
         ),
       depends=[site_file])
-    # XXX invoke-rc.d apache2 reload on any state change.
+    # We don't really need to reload everytime.
+    reload = rg.add_transition(transition('Command',
+        cmdline=['/usr/sbin/invoke-rc.d', 'apache2', 'reload', ],
+        ),
+      depends=[endis],
+      )
 
 
 def register():

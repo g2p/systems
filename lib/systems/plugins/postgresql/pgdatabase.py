@@ -36,9 +36,12 @@ class PgDatabase(EResource):
       tr = rg.add_transition(self.drop_db_trans(), (owner, cluster))
 
     enable_backups = p1 and self.wanted_attrs['enable_backups']
-    rg.add_resource(self.cron_backup_res(enable_backups))
+    # XXX This backup strategy can fill up disks.
+    # Need to somehow ensure crontab can send mail.
+    backupdir = rg.add_to_top(resource('Directory',
+      path='/var/backups/postgresql',
+      ))
 
-  def cron_backup_res(self, enable_backups):
     dbname = self.id_attrs['name']
     template = u'''#!/bin/sh
 set -e
@@ -51,11 +54,14 @@ exec /usr/bin/pg_dump -Fc \\
 
     # Name and mode are important for run-parts to consider the script.
     fname = '/etc/cron.daily/db-backup-' + dbname
-    return resource('PlainFile',
+    rg.add_resource(resource('PlainFile',
         present=enable_backups,
         path=fname,
         mode='0755',
-        contents=code.encode('utf8'), )
+        contents=code.encode('utf8'),
+        ),
+      depends=[backupdir],
+      )
 
   def create_db_trans(self):
     ownername = self.wanted_attrs['owner'].id_attrs['name']
