@@ -85,6 +85,7 @@ setup(name='Systems',
       author='Gabriel de Perthuis',
       author_email='g2p.code@gmail.com',
       description='a declarative language for managing system resources',
+      license='http://www.gnu.org/licenses/gpl-2.0.html',
       long_description='Systems allows you to write a declarative description\n'
         +'of the resources that make up a system,\n'
         +'and enforce this description.\n',
