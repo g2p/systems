@@ -205,6 +205,10 @@ class ResourceGraph(yaml.YAMLObject):
       # We have this id already.
       # Either it's the exact same resource, or a KeyError is thrown.
       resource = self._intern(resource)
+      # XXX Need to bypass _intern for already expanded.
+      # XXX When we use add_to_top, we sometimes have to deal
+      # with a resource that's already been expanded.
+      # Those are not in the graph anymore. How do we refer to them?
     else:
       self.__expandables[resource.identity] = resource
     # Even if already there, we need to add the depends.
